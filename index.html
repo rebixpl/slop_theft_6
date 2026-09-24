@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#111827">
+  <title>Neon Coast — After Hours</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main id="shell">
+    <canvas id="view" tabindex="0" aria-label="Neon Coast 3D game"></canvas>
+    <section id="loading-screen" role="status" aria-live="polite" aria-atomic="true">
+      <div class="loading-card">
+        <div class="loading-brand"><span class="loading-mark">NC</span><span>NEON COAST<small>AFTER HOURS</small></span></div>
+        <div class="loading-orb" aria-hidden="true"><i></i><i></i><i></i></div>
+        <p class="loading-eyebrow">A CITY COMING TO LIFE</p>
+        <h1 id="loading-title">Warming up the coast</h1>
+        <p id="loading-status">Building the city and loading its materials…</p>
+        <div class="loading-track" aria-hidden="true"><i id="loading-progress"></i></div>
+        <button id="loading-retry" type="button" hidden>Reload game</button>
+      </div>
+    </section>
+    <section id="menu" aria-label="Neon Coast title screen">
+      <div class="brand"><span class="brand-mark">NC</span><span>NEON COAST<small>AFTER HOURS</small></span></div>
+      <div class="menu-layout">
+        <div>
+          <h1 class="title">NEON<span>COAST</span></h1>
+          <p class="tagline">Last light on the boulevard. One delivery before the tide rolls in. Take the long way home.</p>
+        </div>
+        <aside class="menu-side">
+          <h2>Find your way around</h2>
+          <div class="control-list">
+            <div class="control-row"><span class="key">W / S</span><span>Move relative to the camera · throttle / brake in vehicles</span></div>
+            <div class="control-row"><span class="key">A / D</span><span>Strafe and face left / right · steer or bank in vehicles</span></div>
+            <div class="control-row"><span class="key">E</span><span>Enter cars, motorcycles, aircraft or the Everglade kayak; save and lay low at Dry Current or sell stolen cars there, start Wildlife Watch, fish, or order a Pelican Fry at Pink Palm Pier</span></div>
+            <div class="control-row"><span class="key">C</span><span>Photograph a different deer during Wildlife Watch</span></div>
+            <div class="control-row"><span class="key">V</span><span>Choose a car · faster cars have higher top speed</span></div>
+            <div class="control-row"><span class="key">I</span><span>Open inventory · 1–4 select fists, pink toy, pistol or AKM</span></div>
+            <div class="control-row"><span class="key wide">F / CLICK</span><span>Attack or fire · hold for automatic fire</span></div>
+            <div class="control-row"><span class="key wide">PLANE</span><span>W / S throttle and brake · A / D bank and turn · SPACE climb · SHIFT dive</span></div>
+            <div class="control-row"><span class="key wide">KAYAK</span><span>Everglade Basin · W / S paddle · A / D steer · SPACE brake</span></div>
+            <div class="control-row"><span class="key wide">SPACE</span><span>Jump · handbrake in your car · cast / reel at Pink Palm Pier</span></div>
+            <div class="control-row"><span class="key wide">SHIFT</span><span>Sprint on foot</span></div>
+            <div class="control-row"><span class="key">M</span><span>Click a street on the map to plot a route</span></div>
+            <div class="control-row"><span class="key">T</span><span>Switch on the neon hour</span></div>
+          </div>
+          <button id="start" type="button"><span>Enter the coast</span><span>↗</span></button>
+          <p class="side-note">Click the game to capture the mouse · move to look · Esc releases · wheel zooms · R resets your ride</p>
+        </aside>
+      </div>
+    </section>
+    <section id="hud" aria-live="polite">
+      <div class="hud-brand">NEON <em>COAST</em><small id="district">CASSIA DISTRICT</small></div>
+      <div id="mission"><div class="eyebrow" id="mission-eyebrow">ACTIVE JOB · 01</div><div id="mission-title">The long way home</div><div id="mission-copy">Take the Sunset Tape to Pink Palm Pier. Your ride is right beside you.</div><button id="next-mission" type="button" aria-label="Choose the next mission">J · NEXT JOB</button></div>
+      <div id="wildlife-card" aria-live="polite"><div class="eyebrow">LEONIDA · FIELD NOTES</div><strong id="wildlife-count">0 / 3</strong><small id="wildlife-hint">Photograph a deer, a wetland animal and a coastal pelican across Leonida with C.</small></div>
+      <div id="street-event-card" aria-live="polite"><div class="eyebrow">SUNPORT � LIVE CALL</div><strong id="street-event-title">STREET ROBBERY</strong><small id="street-event-copy">E � INTERVENE � F � CURRENT WEAPON</small></div>
+      <div id="fishing-card" aria-live="polite"><div class="eyebrow">PINK PALM PIER · AFTER HOURS</div><strong id="fishing-count">0 / 3 · $0</strong><small id="fishing-hint">E to start · SPACE to cast and reel in time</small></div>
+      <div id="gellhorn-card" aria-live="polite"><div class="eyebrow">PORT GELLHORN · GULFSTAR BOARDWALK</div><strong id="gellhorn-count">0 / 4 KEEPSAKES</strong><small id="gellhorn-hint">Check in at the old ticket window.</small></div>
+      <div id="right-hud"><div class="money" id="cash">$3,850<small>cash on hand</small></div><div class="clockbox" id="time">18:42<small>NEON HOUR OFF</small></div><button id="vehicle-toggle" class="game-button" type="button" aria-label="Choose car">V · NEXT CAR</button><button id="sound-toggle" class="game-button" type="button" aria-label="Toggle game audio" aria-pressed="true">♪ SOUND ON</button><button id="render-scale-toggle" class="game-button" type="button" aria-label="Change render scale" title="Lower canvas resolution to improve frame rate; HUD stays full resolution.">RENDER 100%</button><button id="horn-button" class="game-button" type="button" aria-label="Hold to honk" aria-pressed="false" disabled>H · HORN</button></div>
+      <div id="wanted" aria-label="Wanted level: none"><span>WANTED</span><div id="wanted-stars" aria-live="polite"><i>★</i><i>★</i><i>★</i><i>★</i><i>★</i><i>★</i></div><small id="wanted-state">NO HEAT</small></div>
+      <div id="reticle" aria-hidden="true"><i></i></div>
+      <div id="weapon-readout"><span id="weapon-name">FISTS</span><button id="inventory-toggle" type="button" aria-label="Open weapon inventory">I · INVENTORY</button></div>
+      <div id="map-frame"><canvas id="minimap" width="300" height="300" aria-label="Minimap"></canvas></div>
+      <div id="map-label">CASSIA DISTRICT<span id="distance">PINK PALM PIER · 0.2 KM</span></div>
+      <div id="prompt"><span class="prompt-key">E</span><span id="prompt-copy">Enter your convertible</span></div>
+      <div id="healthbox" aria-label="Player health"><span>HEALTH</span><strong id="health-value">100%</strong><div id="health-track"><i id="health-fill"></i></div></div>
+      <div id="speedbox"><span id="vehicle-name">SUNLINE CUSTOM</span><span id="vehicle-specs">122 KM/H · ROADSTER</span><div id="speed">000</div><small>KM / H</small></div>
+      <div id="toast"></div>
+    </section>
+    <div id="map-overlay" role="dialog" aria-modal="true" aria-label="City map">
+      <div id="map-panel"><div class="map-head"><div><h2>Soluna Bay Region</h2><p>Bayview · Port Gellhorn · North Ridge · Mount Kalaga · Mangrove Flats · Sunport · The Keys</p></div><button class="map-close" id="map-close">ESC · CLOSE</button></div><canvas id="worldmap" width="620" height="620" aria-label="Soluna Bay regional map"></canvas><div class="map-foot"><span><strong id="destination-label">★ PINK PALM PIER</strong> · click a road to set a route · right-click to clear</span><button class="map-action" id="clear-route" type="button">CLEAR ROUTE</button></div></div>
+    </div>
+    <section id="inventory" role="dialog" aria-modal="true" aria-label="Weapon inventory" aria-hidden="true">
+      <div id="inventory-card"><div class="inventory-heading"><div><small>ON FOOT · QUICK SELECT</small><h2>PERSONAL ARMORY</h2></div><button id="inventory-close" type="button">ESC · CLOSE</button></div><div id="inventory-slots">
+        <button class="weapon-slot" type="button" data-weapon="0"><kbd>1</kbd><span class="weapon-icon fists-icon">✊</span><strong>FISTS</strong><small>MELEE · QUICK</small></button>
+        <button class="weapon-slot" type="button" data-weapon="1"><kbd>2</kbd><span class="weapon-icon toy-icon">✦</span><strong>GIANT PINK DILDO</strong><small>MELEE · HEAVY</small></button>
+        <button class="weapon-slot" type="button" data-weapon="2"><kbd>3</kbd><span class="weapon-icon pistol-icon">▰</span><strong>9MM PISTOL</strong><small>SEMI-AUTO · 36 DMG</small></button>
+        <button class="weapon-slot" type="button" data-weapon="3"><kbd>4</kbd><span class="weapon-icon rifle-icon">▰</span><strong>AKM RIFLE</strong><small>AUTO · 20 DMG</small></button>
+      </div><p>Press <b>I</b> to close · <b>1–4</b> switches weapons · <b>F</b> or left mouse attacks</p></div>
+    </section>
+    <section id="garage-panel" role="dialog" aria-modal="true" aria-label="Gellhorn Pit Customs" aria-hidden="true">
+      <div id="garage-card">
+        <div class="garage-heading"><div><small>PORT GELLHORN · PIT LANE</small><h2>PIT CUSTOMS</h2></div><div class="garage-balance"><small>CASH ON HAND</small><strong id="garage-cash">$3,850</strong></div><button id="garage-close" type="button">ESC · CLOSE</button></div>
+        <p class="garage-subhead"><strong id="garage-vehicle">SUNLINE CUSTOM</strong><span>UPGRADES STAY WITH THIS CAR</span></p>
+        <div id="garage-upgrades">
+          <button class="garage-upgrade" type="button" data-upgrade="engine"><span>01 · POWERTRAIN</span><strong>ENGINE TUNE</strong><small id="garage-engine-copy">TOP SPEED +7% · ACCELERATION +12%</small><b id="garage-engine-price">$650</b></button>
+          <button class="garage-upgrade" type="button" data-upgrade="handling"><span>02 · SUSPENSION</span><strong>TRACK SETUP</strong><small id="garage-handling-copy">CORNERING +12%</small><b id="garage-handling-price">$500</b></button>
+          <button class="garage-upgrade" type="button" data-upgrade="armor"><span>03 · CHASSIS</span><strong>REINFORCED FRAME</strong><small id="garage-armor-copy">VEHICLE HEALTH +25</small><b id="garage-armor-price">$700</b></button>
+        </div>
+        <p class="garage-foot">E to leave the shop · Upgrades are saved for each car</p>
+      </div>
+    </section>
+    <div id="finish" role="dialog" aria-modal="true">
+      <div class="finish-card"><div class="eyebrow" id="finish-eyebrow">NIGHT SHIFT · DELIVERY MADE</div><h2 id="finish-title">MADE IT BY SUNSET</h2><p id="finish-copy">The tape is on its way to the radio booth. Palm trees are humming and the boulevard is yours.</p><p id="reward">+$1,250 · Cash is yours to keep.</p><button id="roam">Keep roaming</button></div>
+    </div>
+    <div class="touch-controls" aria-label="Touch movement controls"><button id="touch-up" data-key="w">▲</button><button id="touch-left" data-key="a">◀</button><button id="touch-down" data-key="s">▼</button><button id="touch-right" data-key="d">▶</button></div>
+    <button id="touch-action" type="button">E · ENTER</button>
+    <button id="touch-jump" type="button">SPACE · JUMP</button>
+    <button id="touch-fire" type="button" aria-label="Attack or fire">FIRE</button>
+    <section id="error"><div><h1>This browser can't start the 3D scene</h1><p>Neon Coast uses WebGL, built into current versions of Chrome, Edge, Firefox, and Safari. Turn on hardware acceleration, then reopen this file.</p></div></section>
+  </main>
+  <script>
+    (() => {
+      const screen = document.getElementById('loading-screen');
+      const title = document.getElementById('loading-title');
+      const status = document.getElementById('loading-status');
+      const retry = document.getElementById('loading-retry');
+      let finished = false;
+
+      if (location.protocol === 'file:') {
+        const hint = document.createElement('p');
+        hint.className = 'direct-file-hint';
+        hint.textContent = 'Direct HTML mode can block image textures. Run START_GAME.bat for the full materials.';
+        document.querySelector('.side-note')?.after(hint);
+      }
+
+      window.neonCoastLoadingProgress = (loaded, total, sceneReady) => {
+        if (finished) return;
+        const amount = total ? loaded / total : 0;
+        screen.style.setProperty('--load-progress', `${amount * 100}%`);
+        screen.classList.toggle('scene-built', sceneReady);
+        status.textContent = sceneReady
+          ? `Loading city materials · ${loaded} / ${total}`
+          : 'Building the city and preparing the scene…';
+      };
+      window.neonCoastLoadingReady = () => {
+        if (finished) return;
+        finished = true;
+        screen.classList.add('ready');
+        window.setTimeout(() => screen.remove(), 500);
+      };
+      window.neonCoastLoadingFailed = (gameScriptFailed = false) => {
+        if (gameScriptFailed) {
+          title.textContent = 'The game could not start';
+          status.textContent = 'Check that game.js is next to index.html, then reload.';
+          retry.hidden = false;
+          screen.classList.add('failed');
+          return;
+        }
+        screen.classList.add('ready');
+      };
+      retry.addEventListener('click', () => window.location.reload());
+
+      const startGame = () => {
+        const script = document.createElement('script');
+        script.src = './game.js';
+        script.onerror = () => window.neonCoastLoadingFailed(true);
+        document.body.append(script);
+      };
+      requestAnimationFrame(() => requestAnimationFrame(startGame));
+    })();
+  </script>
+</body>
+</html>
+
+
+
