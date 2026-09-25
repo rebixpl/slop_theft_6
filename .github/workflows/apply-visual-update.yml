@@ -9,7 +9,10 @@ jobs:
   integrate:
     if: github.repository == 'rebixpl/slop_theft_6' && github.ref == 'refs/heads/graphics/visual-overhaul'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,8 +20,9 @@ jobs:
           node-version: '22'
       - name: Preserve original render fixture
         run: |
+          git fetch --depth=1 origin 606bb1bbc2bb4462223534f0bca2bfc7ae82f373
           mkdir -p /tmp/neon-baseline
-          git archive HEAD | tar -x -C /tmp/neon-baseline
+          git archive 606bb1bbc2bb4462223534f0bca2bfc7ae82f373 | tar -x -C /tmp/neon-baseline
       - name: Apply checked source edits
         shell: python
         run: |
@@ -26,10 +30,9 @@ jobs:
           folder = pathlib.Path('.visual-update')
           manifest = json.loads((folder / 'manifest.json').read_text())
           encoded = ''.join((folder / ('part-' + str(i) + '.txt')).read_text().strip() for i in range(manifest['parts']))
-          encoded = encoded.replace('Xbyr9AW82e', 'Xbyj9AW82e')
           data = zlib.decompress(base64.b64decode(encoded, validate=True))
           assert hashlib.sha256(data).hexdigest() == manifest['sha256'], 'Transfer checksum mismatch'
-          allowed = {'game.js','index.html','.gitignore','package.json','graphics/geometry.js','graphics/shaders.js','graphics/renderer.js','tests/graphics.test.cjs','tests/browser-smoke.cjs','docs/visual-overhaul-plan.md'}
+          allowed = {'game.js','index.html','.gitignore','package.json','graphics/geometry.js','graphics/shaders.js','graphics/renderer.js','tests/graphics.test.cjs','tests/renderer.test.cjs','tests/browser-smoke.cjs','docs/visual-overhaul-plan.md'}
           outputs = []
           for item in json.loads(data):
               assert item['path'] in allowed, 'Unexpected destination'
@@ -54,40 +57,49 @@ jobs:
           node --check graphics/geometry.js
           node --check graphics/shaders.js
           node --check graphics/renderer.js
-          npm test
-      - name: Commit integration without touching main
-        run: |
-          test "$GITHUB_REF" = 'refs/heads/graphics/visual-overhaul'
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add game.js index.html .gitignore package.json graphics/geometry.js graphics/shaders.js graphics/renderer.js tests/graphics.test.cjs tests/browser-smoke.cjs docs/visual-overhaul-plan.md
-          git commit -m 'Upgrade geometry, vehicle surfaces, sun shadows and coastal atmosphere'
-          git push origin HEAD:refs/heads/graphics/visual-overhaul
+          npm test | tee /tmp/geometry-tests.txt
       - name: Install test browser
         run: |
           npm install --no-save --package-lock=false playwright@1.55.1
           npx playwright install --with-deps chromium
+      - name: Verify sun shadows and fallback buffers
+        run: node --test tests/renderer.test.cjs | tee /tmp/renderer-tests.txt
+      - name: Commit verified renderer fix on graphics branch
+        run: |
+          test "$GITHUB_REF" = 'refs/heads/graphics/visual-overhaul'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add game.js index.html .gitignore package.json graphics/geometry.js graphics/shaders.js graphics/renderer.js tests/graphics.test.cjs tests/renderer.test.cjs tests/browser-smoke.cjs docs/visual-overhaul-plan.md
+          git commit -m 'Fix PCF receiver-plane shadows and missing night-mode yaw transform'
+          git push origin HEAD:refs/heads/graphics/visual-overhaul
       - name: Compare original and upgraded scenes
         run: |
           python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/server-after.log 2>&1 &
           python3 -m http.server 8766 --bind 127.0.0.1 --directory /tmp/neon-baseline > /tmp/server-before.log 2>&1 &
           set +e
-          QA_URL='http://127.0.0.1:8766/?debug=1' QA_OUTPUT=/tmp/visual-qa/before node tests/browser-smoke.cjs
+          QA_DAY_ONLY=1 QA_URL='http://127.0.0.1:8766/?debug=1' QA_OUTPUT=/tmp/visual-qa/before node tests/browser-smoke.cjs
           BEFORE=$?
           QA_OUTPUT=/tmp/visual-qa/after node tests/browser-smoke.cjs
           AFTER=$?
-          test "$BEFORE" = 0 && test "$AFTER" = 0
+          QA_NO_VAO=1 QA_OUTPUT=/tmp/visual-qa/fallback node tests/browser-smoke.cjs
+          FALLBACK=$?
+          test "$BEFORE" = 0 && test "$AFTER" = 0 && test "$FALLBACK" = 0
       - name: Package tested source
         if: always()
-        run: git archive --format=zip HEAD -o /tmp/slop-theft-source.zip
+        run: |
+          git archive --format=zip HEAD -o /tmp/slop-theft-source.zip
+          git diff > /tmp/uncommitted-source.patch
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: graphics-comparison
           path: |
             /tmp/visual-qa
+            /tmp/geometry-tests.txt
+            /tmp/renderer-tests.txt
             /tmp/server-before.log
             /tmp/server-after.log
             /tmp/slop-theft-source.zip
+            /tmp/uncommitted-source.patch
           retention-days: 3
           if-no-files-found: error
