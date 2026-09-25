@@ -1320,6 +1320,21 @@ let selectedCar=loadSelectedCar(),currentCar=tunedVehicle(selectedCar);saveSelec
         traffic.push({kind,...pose,routePath:path,routeLength,routeDistance,direction,v:kind==='bike'?9.4:6.7+roadIndex%2,car:(roadIndex+3)%cars.length,bike:roadIndex%motorcycles.length,wheelSpin:0});
       }
     }
+    const REGIONAL_TOWN_TRAFFIC=[
+      {name:'BAYVIEW',roads:[1,4,8],bikeRoad:8,speeds:[6.8,7.7,9.4],carOffset:0},
+      {name:'PINE HAVEN',roads:[2,5],bikeRoad:5,speeds:[7.2,6.5],carOffset:1},
+      {name:'TIDEWATER',roads:[0,3,8],bikeRoad:3,speeds:[6.3,6.9,7.7],carOffset:2},
+      {name:'KEYS LANDING',roads:[1,6],bikeRoad:1,speeds:[8.7,10.1],carOffset:3},
+      {name:'AMBROSIA',roads:[0,4,9],bikeRoad:-1,speeds:[6.5,5.9,6.2],carOffset:1}
+    ];
+    for(const [townIndex,profile] of REGIONAL_TOWN_TRAFFIC.entries()){
+      const town=REGION_TOWNS.find(entry=>entry.name===profile.name);if(!town)continue;
+      const paths=townGridPaths(town);
+      for(const [slot,roadIndex] of profile.roads.entries()){
+        const path=paths[roadIndex],routeLength=roadTrafficPathLength(path),direction=(townIndex+slot)%2===0?1:-1,kind=roadIndex===profile.bikeRoad?'bike':'car',routeDistance=routeLength*([.34,.63,.48][slot]||.48),pose=roadTrafficPose(path,routeDistance,direction,kind==='bike'?1.5:2.25);
+        traffic.push({kind,...pose,routePath:path,routeLength,routeDistance,direction,v:profile.speeds[slot],car:(townIndex*2+slot+profile.carOffset)%cars.length,bike:(townIndex+slot)%motorcycles.length,wheelSpin:0,town:town.name});
+      }
+    }
     const gellhornLapLength=roadTrafficPathLength(GELLHORN_RACEWAY_LOOP);
     for(let i=0;i<4;i++){const routeDistance=gellhornLapLength*(.12+i*.21),kind=i===3?'bike':'car',pose=roadTrafficPose(GELLHORN_RACEWAY_LOOP,routeDistance,1,kind==='bike'?1.55:2.25);traffic.push({kind,...pose,routePath:GELLHORN_RACEWAY_LOOP,routeLength:gellhornLapLength,routeDistance,direction:1,v:12.2+i*1.15,car:(i+1)%cars.length,bike:i%motorcycles.length,wheelSpin:0,looping:true,raceway:true});}
     function updateRegionalTraffic(dt){for(const t of traffic){if(!t.routePath||t.stolen||t.parked||t.destroyed||t.police)continue;if(t.hitPause>0){t.hitPause=Math.max(0,t.hitPause-dt);continue;}if(t.cruiseV===undefined)t.cruiseV=t.v;const crossingHold=ambrosiaCrossingBlocksTraffic(t);t.v=crossingHold?Math.max(0,t.v-12*dt):Math.min(t.cruiseV,t.v+8*dt);let distance=t.routeDistance+t.v*dt*t.direction;if(t.looping){if(distance<0)distance+=t.routeLength;else if(distance>t.routeLength)distance-=t.routeLength;}else if(distance<0){distance=-distance;t.direction=1;}else if(distance>t.routeLength){distance=2*t.routeLength-distance;t.direction=-1;}distance=clamp(distance,0,t.routeLength);const pose=roadTrafficPose(t.routePath,distance,t.direction,t.kind==='bike'?1.5:2.25);if(driving&&(vehicleType==='car'||vehicleType==='bike')){const playerRide=activeRoadRide(),radius=(vehicleType==='bike'?0.68:1.35)+(t.kind==='bike'?0.85:1.55),oldDistance=Math.hypot(playerRide.x-t.x,playerRide.z-t.z),nextDistance=Math.hypot(playerRide.x-pose.x,playerRide.z-pose.z);if(nextDistance<radius&&nextDistance<=oldDistance){t.hitPause=.28;t.direction*=-1;continue;}}t.routeDistance=distance;t.x=pose.x;t.z=pose.z;t.yaw=pose.yaw;t.wheelSpin+=t.v*dt/(t.kind==='bike'?.37:.47)*t.direction;}}
