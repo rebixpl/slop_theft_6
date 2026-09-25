@@ -1,6 +1,8 @@
 /* Linear-light forward shading. WebGL 1 / GLSL ES 1.00, eight fragment samplers. */
 (function(root){
 'use strict';
+// Byte textures store n/255, while radix-256 packing produces n/256.
+const depthPacking=Object.freeze({encodeScale:256/255,decodeScale:255/256});
 const common = `
 const vec3 SUN = vec3(-0.6000,0.6600,0.4500);
 vec3 displayColor(vec3 x){
@@ -66,7 +68,7 @@ float shadowVisibility(vec3 n){
  float bias=.000055+.00014*(1.0-max(dot(n,normalize(SUN)),0.0)),visibility=0.0;
  for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){
   vec4 packedDepth=texture2D(u_shadow_map,q.xy+vec2(float(x),float(y))*u_shadow_texel);
-  float depth=dot(packedDepth,vec4(1.0/16777216.0,1.0/65536.0,1.0/256.0,1.0));
+  float depth=dot(packedDepth,vec4(1.0/16777216.0,1.0/65536.0,1.0/256.0,1.0))*${depthPacking.decodeScale};
   visibility+=step(q.z-bias,depth);
  }
  float edge=min(min(q.x,1.0-q.x),min(q.y,1.0-q.y));
@@ -166,8 +168,8 @@ const skyVertex=`attribute vec2 a_position;varying vec2 v_uv;void main(){v_uv=a_
 const skyFragment=`precision highp float;varying vec2 v_uv;uniform vec3 u_forward;uniform vec3 u_right;uniform vec3 u_up;uniform float u_aspect;uniform float u_night;uniform float u_time;${common}
 void main(){vec3 ray=normalize(u_forward+u_right*v_uv.x*u_aspect*.554309+u_up*v_uv.y*.554309);gl_FragColor=vec4(displayColor(skyRadiance(ray,u_night,u_time)),1.0);}`;
 const shadowVertex=`attribute vec3 a_position;uniform mat4 u_model;uniform mat4 u_light_matrix;void main(){gl_Position=u_light_matrix*u_model*vec4(a_position,1.0);}`;
-const shadowFragment=`precision highp float;void main(){vec4 d=fract(min(gl_FragCoord.z,.999999)*vec4(16777216.0,65536.0,256.0,1.0));d-=d.xxyz*vec4(0.0,1.0/256.0,1.0/256.0,1.0/256.0);gl_FragColor=d;}`;
-const api={vertex,fragment,skyVertex,skyFragment,shadowVertex,shadowFragment};
+const shadowFragment=`precision highp float;void main(){vec4 d=fract(min(gl_FragCoord.z,.999999)*vec4(16777216.0,65536.0,256.0,1.0));d-=d.xxyz*vec4(0.0,1.0/256.0,1.0/256.0,1.0/256.0);gl_FragColor=d*${depthPacking.encodeScale};}`;
+const api={depthPacking,vertex,fragment,skyVertex,skyFragment,shadowVertex,shadowFragment};
 root.NeonCoastShaders=api;
 if(typeof module==='object'&&module.exports)module.exports=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

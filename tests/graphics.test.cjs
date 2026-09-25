@@ -55,3 +55,16 @@ test('shadow view is finite at coincident camera/target and uses texel-snapped t
  const a=renderer.lightFrame([0,4,8],[0,1,0],2048);const b=renderer.lightFrame([0,4,8],[0,4,8],1024);
  assert.ok(Array.from(a.matrix).every(Number.isFinite));assert.ok(Array.from(b.matrix).every(Number.isFinite));assert.equal(a.matrix.length,16);assert.equal(a.radius,112);
 });
+test('packed shadow depth survives normalized RGBA8 storage without metre-scale error',()=>{
+ const shader=require('../graphics/shaders.js');
+ const packing=shader.depthPacking||{encodeScale:1,decodeScale:1};
+ for(const value of [.001,.2,.499,.5,.501,.6,.8,.9999]){
+  const factors=[16777216,65536,256,1],d=factors.map(f=>(value*f)%1);
+  const adjusted=d.map((v,i)=>i===0?v:v-d[i-1]/256);
+  const bytes=adjusted.map(v=>Math.round(v*packing.encodeScale*255));
+  const decoded=bytes.reduce((s,v,i)=>s+(v/255)/factors[i],0)*packing.decodeScale;
+  assert.ok(Math.abs(decoded-value)<1/65536,`RGBA8 depth error at ${value}: ${decoded-value}`);
+ }
+ assert.ok(shader.shadowFragment.includes(String(packing.encodeScale)),'writer uses tested normalization');
+ assert.ok(shader.fragment.includes(String(packing.decodeScale)),'reader uses tested normalization');
+});
