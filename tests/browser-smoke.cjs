@@ -1,0 +1,72 @@
+'use strict';
+const { chromium } = require('playwright');
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+(async () => {
+  const out = process.env.QA_OUTPUT || '/tmp/visual-qa';
+  fs.mkdirSync(out, { recursive: true });
+  const browser = await chromium.launch({ headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-dev-shm-usage'] });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  const errors = [], warnings = [], messages = [], checks = {};
+  page.on('pageerror', e => errors.push(String(e)));
+  page.on('console', m => { if(m.type()==='error') errors.push(m.text()); else if(m.type()==='warning') warnings.push(m.text()); else messages.push(m.text()); });
+  page.setDefaultTimeout(120000);
+  try {
+    await page.goto(process.env.QA_URL || 'http://127.0.0.1:8765/?debug=1', { waitUntil: 'load', timeout: 120000 });
+    await page.waitForFunction(() => !!window.neonCoastDebug, { timeout: 120000 });
+    await page.waitForFunction(() => !document.getElementById('loading-screen'), { timeout: 120000 });
+    checks.title = await page.title();
+    assert.match(checks.title, /Neon Coast/);
+    await page.locator('#start').click();
+    await page.waitForTimeout(1000);
+    checks.started = await page.locator('#menu').evaluate(el => el.classList.contains('gone'));
+    assert.equal(checks.started, true);
+    checks.spawn = await page.evaluate(() => neonCoastDebug.state());
+    await page.screenshot({ path: path.join(out, 'street.png'), timeout: 120000 });
+    await page.keyboard.down('w');
+    await page.waitForTimeout(700);
+    await page.keyboard.up('w');
+    checks.walked = await page.evaluate(() => neonCoastDebug.state());
+    assert.ok(Math.hypot(checks.walked.x-checks.spawn.x, checks.walked.z-checks.spawn.z)>.01, 'walking changes position');
+    await page.keyboard.press('m');
+    checks.map = await page.locator('#map-overlay').evaluate(el => el.classList.contains('show'));
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => neonCoastDebug.teleport(0, -175, 0, true));
+    await page.waitForTimeout(500);
+    checks.car = await page.evaluate(() => neonCoastDebug.state());
+    assert.equal(checks.car.driving, true);
+    await page.screenshot({ path: path.join(out, 'car.png'), timeout: 120000 });
+    await page.keyboard.down('w');
+    await page.waitForTimeout(700);
+    await page.keyboard.up('w');
+    checks.drove = await page.evaluate(() => neonCoastDebug.state());
+    await page.keyboard.press('t');
+    await page.waitForTimeout(500);
+    checks.night = await page.locator('#time').innerText();
+    await page.screenshot({ path: path.join(out, 'night.png'), timeout: 120000 });
+    await page.keyboard.press('t');
+    await page.evaluate(() => { neonCoastDebug.teleport(22, -185, 0, false); neonCoastDebug.aimAt(14, -213, .12); });
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: path.join(out, 'pier.png'), timeout: 120000 });
+    const before = await page.locator('#render-scale-toggle').innerText();
+    await page.locator('#render-scale-toggle').click();
+    checks.renderScale = await page.locator('#render-scale-toggle').innerText();
+    assert.notEqual(checks.renderScale, before);
+    checks.glError = await page.evaluate(() => document.getElementById('view').getContext('webgl').getError());
+    assert.equal(checks.glError, 0);
+    checks.graphics = await page.evaluate(() => window.neonCoastGraphicsStats?.() || null);
+    const relevantErrors = errors.filter(e => !e.includes('favicon.ico'));
+    assert.deepEqual(relevantErrors, [], 'no runtime or shader errors');
+    checks.passed = true;
+  } catch(error) {
+    checks.passed = false;
+    checks.failure = String(error.stack || error);
+    try { await page.screenshot({ path: path.join(out, 'failure.png'), timeout: 30000 }); } catch (_) {}
+    process.exitCode = 1;
+  } finally {
+    fs.writeFileSync(path.join(out, 'checks.json'), JSON.stringify({ checks, errors, warnings, messages }, null, 2));
+    console.log(JSON.stringify({ checks, errors, warnings }, null, 2));
+    await browser.close();
+  }
+})().catch(error => { console.error(error); process.exitCode = 1; });
