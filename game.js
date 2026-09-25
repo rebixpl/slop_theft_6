@@ -185,6 +185,27 @@ float headlight=0.0;if(u_night>.5&&v_distance<55.0)headlight=beam(u_headlight_le
       else{b.box(x+upperX,ground+h+.8,z,w*.48,1.2,d*.48,hex(0x324e5b));for(const side of [-1,1])b.segment([x+upperX+side*w*.20,ground+h+.5,z],[x+upperX+side*w*.20,ground+h+5.0,z],.075,trim,6,.04);}
       colliders.push({x,z,w:w*1.22,d:d*1.18,baseY:ground-.08,topY:ground+h+9,kind:'building'});
     }
+    function addViceCityCondoTower(b,x,z,h,variant=0){
+      const ground=terrainHeightAt(x,z),radius=variant?8.45:8.85,podiumRadius=radius+3.0,floorHeight=3.05,roofStart=5.02,floors=Math.max(12,Math.floor((h-13)/floorHeight)),glass=[hex(0x477d87),hex(0x5b8990),hex(0x76979a),hex(0x456b78)],frame=hex(0x29464f),balcony=hex(0xd7ccb0),rail=hex(0xe4d7bb),podium=hex(variant?0x6c7370:0x82796f),roof=hex(0x667d7a),segments=20;
+      b.cylinder(x,ground+2.28,z,podiumRadius*.96,podiumRadius*1.08,4.56,podium,segments);
+      b.cylinder(x,ground+4.60,z,podiumRadius*1.08,podiumRadius*1.08,.20,balcony,segments);
+      b.box(x,ground+4.77,z-1.4,6.6,.14,5.2,hex(0x65a7a3));b.box(x,ground+4.87,z-1.4,7.5,.08,6.1,hex(0xe2d2b2));
+      for(let floor=0;floor<floors;floor++){
+        const progress=floor/Math.max(1,floors-1),taper=progress>.82?1-(progress-.82)*.72:1,r=radius*taper,y=ground+roofStart+floor*floorHeight,windowColor=glass[(floor+variant)%glass.length];
+        b.cylinder(x,y+floorHeight*.43,z,r,r,floorHeight*.83,windowColor,segments);
+        b.cylinder(x,y+floorHeight*.85,z,r+1.24,r+1.24,.20,balcony,segments);
+        for(let i=0;i<segments;i++){
+          const a=i*Math.PI*2/segments,c=(i+1)*Math.PI*2/segments,px=x+Math.cos(a)*(r+.03),pz=z+Math.sin(a)*(r+.03),qx=x+Math.cos(c)*(r+.03),qz=z+Math.sin(c)*(r+.03),railY=y+floorHeight*.61,outer=r+1.0;
+          b.segment([px,y+.32,pz],[px,y+floorHeight*.72,pz],.045,frame,4,.032);
+          b.segment([x+Math.cos(a)*outer,railY,z+Math.sin(a)*outer],[x+Math.cos(c)*outer,railY,z+Math.sin(c)*outer],.035,rail,4,.025);
+          if(i%2===0)b.segment([x+Math.cos(a)*outer,y+floorHeight*.48,z+Math.sin(a)*outer],[x+Math.cos(a)*outer,railY,z+Math.sin(a)*outer],.034,rail,4,.024);
+        }
+        if(floor%5===2)for(const side of [-1,1]){const planterX=x+side*(r*.72),planterZ=z-r*.56;b.box(planterX,y+.34,planterZ,1.2,.34,.52,hex(0x566a5e));b.sphere(planterX,y+.68,planterZ,.62,.42,.40,hex(0x659274),8,5);}
+      }
+      const roofY=ground+roofStart+floors*floorHeight;b.cylinder(x,roofY+2.35,z,radius*.54,radius*.62,4.7,hex(0x719095),segments);b.cylinder(x,roofY+4.82,z,radius*.68,radius*.68,.24,roof,segments);b.segment([x,roofY+4.9,z],[x,roofY+9.0,z],.065,hex(0xd6c6a6),6,.045);
+      b.box(x,ground+1.75,z-podiumRadius*.95,7.2,2.6,.16,hex(0x35545a));b.box(x,ground+1.75,z-podiumRadius*.95-.10,2.4,2.2,.05,hex(0x83b5b3));
+      colliders.push({x,z,w:podiumRadius*2,d:podiumRadius*2,baseY:ground-.08,topY:roofY+9.2,kind:'building'});
+    }
     function addCivicBuilding(b,x,z,type,w=24,d=21,h=10){
       const hospital=type==='hospital',ground=terrainHeightAt(x,z),start=b.p.length,wall=hospital?hex(0xd7d2bd):hex(0xb5b5a7),variant=hospital?62:64;
       addBuilding(b,x,z,w,d,h,wall,variant);for(let i=start+1;i<b.p.length;i+=3)b.p[i]+=ground;
@@ -813,7 +834,7 @@ function addRosewaterWreck(b,x,z,waterline,cleatX,cleatZ,cleatY){
         b.cylinder(ix,.088,iz,.43,.43,.035,hex(0x252e37),12);b.cylinder(ix,.108,iz,.34,.34,.018,hex(0x697780),12);b.cylinder(ix,.120,iz,.21,.21,.008,hex(0x39434c),12);
       }
       for(let zi=0;zi<streets.length-1;zi++)for(let xi=0;xi<streets.length-1;xi++){const x0=streets[xi]+9.2,x1=streets[xi+1]-9.2,z0=streets[zi]+9.2,z1=streets[zi+1]-9.2,cx=(x0+x1)/2,cz=(z0+z1)/2,bw=x1-x0,bd=z1-z0;if(Math.pow(Math.abs(cx)/226,2.6)+Math.pow(Math.abs(cz)/226,2.6)>1.05)continue;if(xi===0&&zi===7){addCivicBuilding(b,cx,cz,'hospital',bw*.9,bd*.9,12);continue;}if(xi===7&&zi===0){addCivicBuilding(b,cx,cz,'police',bw*.9,bd*.9,10);continue;}if(bayfrontTowerLots.has(`${Math.round(cx)},${Math.round(cz)}`))continue;if(cz < -147 || rnd()<.11)continue;const count=rnd()<.63?1:2;for(let k=0;k<count;k++){const ww=count===1?bw*(.69+rnd()*.21):bw*.42,dd=count===1?bd*(.68+rnd()*.23):bd*(.67+rnd()*.24),ox=count===1?(rnd()-.5)*1.8:(k===0?-.26:.26)*(bw-ww),oz=count===1?(rnd()-.5)*1.8:(rnd()-.5)*2,h=9+rnd()*26,col=pal[Math.floor(rnd()*pal.length)];addBuilding(b,cx+ox,cz+oz,ww,dd,h,col,Math.floor(rnd()*9));}}
-      for(let i=0;i<bayfrontTowers.length;i++){const [x,z,h,color]=bayfrontTowers[i];addSkylineTower(b,x,z,21,19,h,hex(color),i,i%3);}
+      for(let i=0;i<bayfrontTowers.length;i++){const [x,z,h,color]=bayfrontTowers[i];if(i===2||i===3)addViceCityCondoTower(b,x,z,h,i-2);else addSkylineTower(b,x,z,21,19,h,hex(color),i,i%3);}
       for(const path of coreLoopPaths())addCollectorRoad(b,path,10,road,sidewalk,curb,.07,.12,.145);
       for(let i=0;i<streets.length-1;i++){const center=(streets[i]+streets[i+1])/2;for(const side of [-1,1])for(const offset of [-5,5])addPalm(b,side*7.25,center+offset,side<0?1.02:.96);}
       for(let z=-160;z<=180;z+=42){for(const side of [-1,1]){const x=side*9.7;b.cylinder(x,3.1,z,.11,.14,6.2,hex(0x48535b));b.segment([x,5.9,z],[x-side*1.5,5.8,z],.11,hex(0x48535b));b.sphere(x-side*1.5,5.72,z,.2,.23,.2,hex(0xffd796),8,5);}}
