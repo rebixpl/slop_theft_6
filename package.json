@@ -2,7 +2,7 @@
   "name": "neon-coast-visual-qa",
   "private": true,
   "scripts": {
-    "test": "node --test tests/graphics.test.cjs",
+    "test": "node --test tests/graphics.test.cjs tests/architecture.test.cjs tests/map-ui.test.cjs tests/texture-loading.test.cjs",
     "test:browser": "node tests/browser-smoke.cjs"
   },
   "devDependencies": {

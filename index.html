@@ -6,8 +6,11 @@
   <meta name="theme-color" content="#111827">
   <title>Neon Coast — After Hours</title>
   <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./ui/coastal.css">
   <script defer src="./asset-loader.js"></script>
   <script defer src="./graphics/geometry.js"></script>
+  <script defer src="./graphics/architecture.js"></script>
+  <script defer src="./ui/interface.js"></script>
   <script defer src="./graphics/shaders.js"></script>
   <script defer src="./graphics/renderer.js"></script>
 </head>
@@ -33,7 +36,7 @@
           <p class="tagline">Last light on the boulevard. One delivery before the tide rolls in. Take the long way home.</p>
         </div>
         <aside class="menu-side">
-          <h2>Find your way around</h2>
+          <details class="controls-guide"><summary>Controls &amp; activities</summary>
           <div class="control-list">
             <div class="control-row"><span class="key">W / S</span><span>Move relative to the camera · throttle / brake in vehicles</span></div>
             <div class="control-row"><span class="key">A / D</span><span>Strafe and face left / right · steer or bank in vehicles</span></div>
@@ -51,6 +54,7 @@
             <div class="control-row"><span class="key">P</span><span>Open Neon Coast Pulse for live calls and nearby activities</span></div>
             <div class="control-row"><span class="key">T</span><span>Switch on the neon hour</span></div>
           </div>
+          </details>
           <button id="start" type="button"><span>Enter the coast</span><span>↗</span></button>
           <p class="side-note">Click the game to capture the mouse · move to look · Esc releases · wheel zooms · R resets your ride</p>
         </aside>
@@ -60,7 +64,7 @@
       <div class="hud-brand">NEON <em>COAST</em><small id="district">CASSIA DISTRICT</small></div>
       <div id="mission"><div class="eyebrow" id="mission-eyebrow">ACTIVE JOB · 01</div><div id="mission-title">The long way home</div><div id="mission-copy">Take the Sunset Tape to Pink Palm Pier. Your ride is right beside you.</div><div id="gellhorn-arc-status" data-state="locked">PORT GELLHORN FILE · FIND MARA IN ROOM 06</div><button id="next-mission" type="button" aria-label="Choose the next mission">J · NEXT JOB</button> <button id="pulse-toggle" type="button" aria-label="Open Neon Coast Pulse">P - PULSE</button></div>
       <div id="wildlife-card" aria-live="polite"><div class="eyebrow">LEONIDA · FIELD NOTES</div><strong id="wildlife-count">0 / 3</strong><small id="wildlife-hint">Photograph a deer, a wetland animal and a coastal pelican across Leonida with C.</small></div>
-      <div id="street-event-card" aria-live="polite"><div class="eyebrow">SUNPORT � LIVE CALL</div><strong id="street-event-title">STREET ROBBERY</strong><small id="street-event-copy">E HELP · G TAKE THE CUT · F WEAPON</small></div>
+      <div id="street-event-card" aria-live="polite"><div class="eyebrow">SUNPORT · LIVE CALL</div><strong id="street-event-title">STREET ROBBERY</strong><small id="street-event-copy">E HELP · G TAKE THE CUT · F WEAPON</small></div>
       <div id="territory-card" aria-live="polite" data-state="available"><div class="eyebrow">REGIONAL · BLOCK CONTROL</div><strong id="territory-title">CREW TURF</strong><small id="territory-copy">On foot · press E within the marked block to take it.</small></div>
       <div id="fishing-card" aria-live="polite"><div class="eyebrow" id="fishing-title">PINK PALM PIER · AFTER HOURS</div><strong id="fishing-count">0 / 3 · $0</strong><small id="fishing-hint">E to start · SPACE to cast and reel in time</small></div>
       <div id="gellhorn-card" aria-live="polite"><div class="eyebrow">PORT GELLHORN · GULFSTAR BOARDWALK</div><strong id="gellhorn-count">0 / 4 KEEPSAKES</strong><small id="gellhorn-hint">Check in at the old ticket window.</small></div>
@@ -77,10 +81,11 @@
         </div>
       </div>
       <div id="right-hud"><div class="money" id="cash">$3,850<small>cash on hand</small></div><div class="clockbox" id="time">18:42<small>NEON HOUR OFF</small></div><button id="vehicle-toggle" class="game-button" type="button" aria-label="Choose car">V · NEXT CAR</button><button id="sound-toggle" class="game-button" type="button" aria-label="Toggle game audio" aria-pressed="true">♪ SOUND ON</button><button id="render-scale-toggle" class="game-button" type="button" aria-label="Change render scale" title="Lower canvas resolution to improve frame rate; HUD stays full resolution.">RENDER 100%</button><button id="horn-button" class="game-button" type="button" aria-label="Hold to honk" aria-pressed="false" disabled>H · HORN</button></div>
+      <details id="game-settings"><summary aria-label="Game settings">Settings</summary><div id="settings-controls"></div><small id="texture-status"></small></details>
       <div id="wanted" aria-label="Wanted level: none"><span>WANTED</span><div id="wanted-stars" aria-live="polite"><i>★</i><i>★</i><i>★</i><i>★</i><i>★</i><i>★</i></div><small id="wanted-state">NO HEAT</small></div>
       <div id="reticle" aria-hidden="true"><i></i></div>
       <div id="weapon-readout"><span id="weapon-name">FISTS</span><button id="inventory-toggle" type="button" aria-label="Open weapon inventory">I · INVENTORY</button></div>
-      <div id="map-frame"><canvas id="minimap" width="300" height="300" aria-label="Minimap"></canvas></div>
+      <div id="map-frame"><canvas id="minimap" width="300" height="190" aria-label="Minimap"></canvas><button id="map-open" type="button" aria-label="Open map">M <span>MAP</span></button></div>
       <div id="map-label">CASSIA DISTRICT<span id="distance">PINK PALM PIER · 0.2 KM</span></div>
       <div id="prompt"><span class="prompt-key">E</span><span id="prompt-copy">Enter your convertible</span></div>
       <div id="healthbox" aria-label="Player health"><span>HEALTH</span><strong id="health-value">100%</strong><div id="health-track"><i id="health-fill"></i></div></div>
@@ -88,7 +93,14 @@
       <div id="toast"></div>
     </section>
     <div id="map-overlay" role="dialog" aria-modal="true" aria-label="City map">
-      <div id="map-panel"><div class="map-head"><div><h2>Soluna Bay Region</h2><p>Bayview · Port Gellhorn · North Ridge · Mount Kalaga · Mangrove Flats · Sunport · The Keys</p></div><button class="map-close" id="map-close">ESC · CLOSE</button></div><canvas id="worldmap" width="620" height="620" aria-label="Soluna Bay regional map"></canvas><div class="map-foot"><span><strong id="destination-label">★ PINK PALM PIER</strong> · click a road to set a route · right-click to clear</span><button class="map-action" id="clear-route" type="button">CLEAR ROUTE</button></div></div>
+      <div id="map-panel">
+        <header class="map-head"><div class="map-brand"><small>NEON COAST / AFTER HOURS</small><h2>LEONIDA</h2></div><div class="map-heading-caption">Find your own way.</div><button class="map-close" id="map-close" type="button">ESC <span>BACK</span></button></header>
+        <div class="map-workspace"><div class="map-stage"><canvas id="worldmap" width="1000" height="720" tabindex="0" aria-label="Leonida map. Drag to pan, scroll to zoom, click a road to set a waypoint."></canvas>
+          <div class="map-tools"><button id="map-zoom-in" type="button" aria-label="Zoom in">+</button><span id="map-zoom-level">1.0×</span><button id="map-zoom-out" type="button" aria-label="Zoom out">−</button><button id="map-fit" type="button">FIT</button><button id="map-player" type="button">MY LOCATION</button></div>
+          <div class="map-compass" aria-hidden="true">N<span>↑</span></div><span id="map-coordinates" aria-hidden="true">0 / 0</span>
+        </div><aside class="map-sidebar"><div class="map-sidebar-heading"><h3>Explore the coast</h3><span id="map-result-count"></span></div><label class="map-search-label" for="map-search">Search locations</label><input id="map-search" type="search" placeholder="Where to?" autocomplete="off"><div class="map-filters" role="group" aria-label="Location categories"><button type="button" data-map-category="all" aria-pressed="true">All</button><button type="button" data-map-category="place" aria-pressed="false">Places</button><button type="button" data-map-category="service" aria-pressed="false">Services</button><button type="button" data-map-category="activity" aria-pressed="false">Activities</button></div><div id="map-locations"></div><div class="map-destination"><small>DESTINATION</small><strong id="destination-label">PINK PALM PIER</strong><button class="map-action" id="clear-route" type="button">Clear waypoint</button></div></aside></div>
+        <footer class="map-foot"><span><b>DRAG</b> Pan <b>SCROLL / + −</b> Zoom <b>CLICK</b> Set waypoint</span><span>YOUR CITY. YOUR ROUTE.</span></footer>
+      </div>
     </div>
     <section id="pulse-overlay" role="dialog" aria-modal="true" aria-label="Neon Coast Pulse" aria-hidden="true">
       <div id="pulse-card"><header class="pulse-heading"><div><small>LEONIDA / LOCAL SIGNAL</small><h2>NEON COAST PULSE</h2></div><button id="pulse-close" type="button" aria-label="Close Neon Coast Pulse">P / ESC - CLOSE</button></header><p class="pulse-intro">Street calls and nearby spots, routed from where you are. Pinning a lead leaves your current job alone.</p><div id="pulse-leads" aria-live="polite"></div><footer class="pulse-foot">P or ESC to put the phone away - route pins use the nearest street</footer></div>

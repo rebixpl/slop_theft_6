@@ -33,10 +33,10 @@ vec3 skyRadiance(vec3 ray,float night,float time){
 `;
 const vertex=`
 precision highp float;
-attribute vec3 a_position;attribute vec3 a_normal;attribute vec3 a_color;
+attribute vec3 a_position;attribute vec3 a_normal;attribute vec3 a_color;attribute float a_surface;
 uniform mat4 u_vp;uniform mat4 u_model;uniform mat4 u_light_matrix;
 uniform vec3 u_eye;
-varying vec3 v_color;varying vec3 v_normal;varying vec3 v_world;varying vec3 v_local;
+varying float v_surface;varying vec3 v_color;varying vec3 v_normal;varying vec3 v_world;varying vec3 v_local;
 varying vec4 v_shadow;varying vec3 v_shadow_normal;varying float v_distance;
 void main(){
  vec4 world=u_model*vec4(a_position,1.0);
@@ -44,7 +44,7 @@ void main(){
  vec3 c0=cross(m[1],m[2]),c1=cross(m[2],m[0]),c2=cross(m[0],m[1]);
  float determinant=dot(m[0],c0);
  vec3 n=normalize(mat3(c0,c1,c2)*a_normal*(determinant<0.0?-1.0:1.0));
- v_normal=n;v_world=world.xyz;v_local=a_position;v_color=a_color;v_distance=distance(world.xyz,u_eye);
+ v_surface=a_surface;v_normal=n;v_world=world.xyz;v_local=a_position;v_color=a_color;v_distance=distance(world.xyz,u_eye);
  v_shadow=u_light_matrix*vec4(world.xyz+n*.035,1.0);
  // Transform the receiver plane, not just its point, into the light's clip space.
  mat3 lm=mat3(u_light_matrix);
@@ -60,7 +60,7 @@ uniform vec3 u_headlight_left;uniform vec3 u_headlight_right;uniform vec3 u_head
 uniform sampler2D u_ground_texture;uniform sampler2D u_road_texture;uniform sampler2D u_architecture_texture;
 uniform sampler2D u_hardscape_texture;uniform sampler2D u_nature_texture;uniform sampler2D u_vehicle_atlas;uniform sampler2D u_paint_texture;
 uniform sampler2D u_shadow_map;uniform vec2 u_shadow_texel;uniform float u_shadow_enabled;
-varying vec3 v_color;varying vec3 v_normal;varying vec3 v_world;varying vec3 v_local;varying vec4 v_shadow;varying vec3 v_shadow_normal;varying float v_distance;
+varying float v_surface;varying vec3 v_color;varying vec3 v_normal;varying vec3 v_world;varying vec3 v_local;varying vec4 v_shadow;varying vec3 v_shadow_normal;varying float v_distance;
 ${common}
 vec2 atlasUV(vec2 uv,float tile){return vec2(mod(tile,2.0),1.0-floor(tile*.5))*.5+vec2(.012)+fract(uv)*.476;}
 vec3 detailTint(vec3 tex,float strength){float l=dot(tex,vec3(.2126,.7152,.0722));return mix(vec3(1.0),clamp(vec3(.72)+tex*.60,vec3(.64),vec3(1.22)),strength)*(1.0+(l-.5)*strength*.17);}
@@ -133,6 +133,46 @@ void main(){
  }else if(u_material>4.5&&u_material<5.5){
   albedo*=u_asset_tint;roughness=clamp(u_asset_roughness,.07,1.0);metallic=clamp(u_asset_metallic,0.0,1.0);
   emissive+=u_asset_emissive*(.3+u_night*1.6);coat=metallic*.35;
+ }
+ // Explicit architectural surfaces bypass the old paint-color heuristics.
+ if(v_surface>.5){
+  float kind=floor(v_surface+.5);
+  foliage=0.0;roughness=.82;metallic=0.0;coat=0.0;
+  albedo=pow(clamp(v_color,vec3(.005),vec3(1.0)),vec3(2.2));
+  if(u_material>4.5&&u_material<5.5)albedo*=u_asset_tint;
+  vec2 uv=abs(n.y)>.65?v_world.xz:abs(n.x)>abs(n.z)?v_world.zy:v_world.xy;
+  if(kind<6.5){
+   float tile=kind<1.5?0.0:kind<2.5?1.0:kind<3.5?2.0:kind<4.5?3.0:1.0;
+   vec2 texUV=atlasUV(uv*(kind==4.0?.42:.19),tile);
+   vec3 tex=texture2D(u_architecture_texture,texUV).rgb;
+   float lum=dot(tex,vec3(.2126,.7152,.0722));
+   albedo*=clamp(vec3(1.0)+(tex-vec3(.67))*1.45,vec3(.43),vec3(1.42));
+   // Baked image detail and modest relief, faded before it becomes distant shimmer.
+   if(v_distance<85.0&&kind<4.5){
+    float dx=dot(texture2D(u_architecture_texture,texUV+vec2(.0015,0)).rgb,vec3(.333))-lum;
+    float dy=dot(texture2D(u_architecture_texture,texUV+vec2(0,.0015)).rgb,vec3(.333))-lum;
+    vec3 tangent=abs(n.y)>.65?vec3(1,0,0):abs(n.x)>abs(n.z)?vec3(0,0,1):vec3(1,0,0);
+    vec3 bitangent=abs(n.y)>.65?vec3(0,0,1):vec3(0,1,0);
+    n=normalize(n-(tangent*dx+bitangent*dy)*.36*(1.0-smoothstep(25.0,85.0,v_distance)));
+   }
+   if(kind==5.0){
+    vec2 brickUV=uv*vec2(1.55,4.25);brickUV.x+=mod(floor(brickUV.y),2.0)*.5;
+    vec2 f=fract(brickUV);float edge=min(min(f.x,1.0-f.x),min(f.y,1.0-f.y));
+    float mortar=1.0-smoothstep(.025,.060,edge);
+    float brickTone=.82+.25*hash21(floor(brickUV));
+    albedo=mix(albedo*brickTone,vec3(.31,.29,.25),mortar*.68);
+   }else if(kind==6.0){
+    float seam=1.0-smoothstep(.018,.09,fract(uv.y*4.5));
+    albedo*=1.0-seam*.32;roughness=.72;
+   }
+  }else if(kind<8.5){
+   roughness=.13;metallic=.12;coat=.90;
+   float blinds=smoothstep(.06,.13,fract(v_world.y*5.0));
+   albedo*=mix(.55,.82,blinds);
+   if(kind>7.5)emissive+=vec3(.50,.27,.105)*u_night*(.65+.35*blinds);
+  }else if(kind<9.5){roughness=.34;metallic=.62;}
+  else if(kind<10.5){roughness=.91;albedo*=.93+.07*valueNoise(uv*10.0);}
+  else{roughness=.42;emissive+=albedo*(.15+1.8*u_night);}
  }
  if(u_material>5.5&&u_material<6.5){
   water=1.0;
