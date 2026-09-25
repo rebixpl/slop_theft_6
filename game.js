@@ -254,6 +254,8 @@ float headlight=0.0;if(u_night>.5&&v_distance<55.0)headlight=beam(u_headlight_le
     function nearMountKalagaKeepClear(x,z,padding=0){if(Math.hypot(x-MOUNT_KALAGA_TRAILHEAD.x,z-MOUNT_KALAGA_TRAILHEAD.z)<25+padding||nearMountKalagaTrail(x,z,5+padding))return true;return MOUNT_KALAGA_DEER_SPOTS.some(animal=>Math.hypot(x-animal.x,z-animal.z)<20+padding);}
     const PORT_GELLHORN_ACCESS=[[-1230,-180],[-1240,-275],[-1245,-370],[-1240,-465],[-1230,-555],[-1230,-635]],GRASSRIVERS_ACCESS_ROAD=[[-606,950],[-568,990],[-525,1050]],WORLD_CONNECTORS=[[[215,-126],[300,-130],[500,-130],[580,-130],[700,-140],[820,-150],[1000,-165],[1230,-180],[1342,-166]],MOUNT_KALAGA_ACCESS,PORT_GELLHORN_ACCESS,GRASSRIVERS_ACCESS_ROAD,[[525,2160],[555,2160],[577,2160]]],AIRPORT_TAXI_ROAD=[[1418,-5],[1405,-5],[1405,-100],[1392,-145],[1342,-166]],AIRPORT_ACCESS_ROAD=[[1342,-166],[1330,-205],[1260,-252],[1160,-278],[1005,-278],[1130,-326],[1230,-382],[1310,-452],[1350,-510]];
     const GELLHORN_RACEWAY_LOOP=[[-1042,-482],[-980,-482],[-926,-472],[-884,-447],[-844,-418],[-817,-382],[-807,-363],[-815,-330],[-795,-278],[-827,-242],[-881,-222],[-954,-214],[-1018,-214],[-1076,-228],[-1124,-256],[-1148,-294],[-1165,-350],[-1148,-405],[-1118,-443],[-1076,-470],[-1042,-482]],GELLHORN_RACEWAY_CONNECTOR=[[-1245,-370],[-1218,-370],[-1191,-367],[-1165,-350]],GELLHORN_PIT_LANE=[[-807,-363],[-784,-355],[-780,-327],[-780,-300],[-795,-278]],GELLHORN_PIT_CUSTOMS={x:-755,z:-342};
+    const LEONIDA_PENITENTIARY={x:-700,z:-610},LEONIDA_PENITENTIARY_ACCESS=[[-440,-540],[-500,-552],[-558,-574],[-607,-595],[-646,-610]];WORLD_CONNECTORS.push(LEONIDA_PENITENTIARY_ACCESS);
+    function nearLeonidaPenitentiary(x,z,padding=0){return Math.abs(x-LEONIDA_PENITENTIARY.x)<70+padding&&Math.abs(z-LEONIDA_PENITENTIARY.z)<49+padding;}
     function roundedLoopPath(x,z,outer,radius,steps=5){
       const path=[[x-outer+radius,z-outer],[x+outer-radius,z-outer]],corners=[
         {x:outer-radius,z:-outer+radius,a:-Math.PI/2,b:0},
@@ -320,7 +322,7 @@ float headlight=0.0;if(u_night>.5&&v_distance<55.0)headlight=beam(u_headlight_le
       let bestCost=Infinity,bestNode=-1;for(let iteration=0;iteration<count;iteration++){let u=-1,min=Infinity;for(let i=0;i<count;i++)if(!visited[i]&&dist[i]<min){min=dist[i];u=i;}if(u<0)break;visited[u]=1;if(u===ea||u===eb){const cost=min+(u===ea?end.edge.length*end.t:end.edge.length*(1-end.t));if(cost<bestCost){bestCost=cost;bestNode=u;}}if(min>bestCost)break;for(const edge of roadNetwork.adjacency[u]){const next=dist[u]+edge.length;if(next<dist[edge.to]){dist[edge.to]=next;previous[edge.to]=u;}}}
       let points=[[sx,sz],[start.x,start.z]];if(bestNode>=0){const chain=[];for(let at=bestNode;at>=0;at=previous[at])chain.push(roadNetwork.nodes[at]);chain.reverse();points.push(...chain); }points.push([end.x,end.z]);if(Math.hypot(end.x-sx,end.z-sz)<.05)points=[[sx,sz]];return points.filter((point,i,array)=>!i||Math.hypot(point[0]-array[i-1][0],point[1]-array[i-1][1])>.12);
     }
-     function districtAt(x,z){if(Math.hypot(x-KEYS_LIGHTHOUSE.x,z-KEYS_LIGHTHOUSE.z)<82)return KEYS_LIGHTHOUSE.name;for(const town of REGION_TOWNS){if(town.profile==='ambrosia'&&x>-470&&x<-320&&z>620&&z<760)return'AMBROSIA CANE FIELDS';const r=(town.offsets.length*21)+78;if(Math.abs(x-town.x)<r&&Math.abs(z-town.z)<r)return town.name;}if(Math.abs(x)<=230&&Math.abs(z)<=220){if(z<-168)return'SUGAR BEACH';return Math.abs(x)<55?'CASSIA DISTRICT':z>65?'PALM GROVE':'OCEAN DRIVE';}if(z>1240*WORLD_SCALE)return'LEONIDA KEYS';if(channelDistance(x,z,EVERGLADE_CYPRESS_CUT.points)<EVERGLADE_CYPRESS_CUT.width+20)return'CYPRESS CUT';if(channelDistance(x,z,EVERGLADE_HERON_RUNOFF.points)<EVERGLADE_HERON_RUNOFF.width+20||inHeronWater(x,z)||Math.abs(Math.hypot((x-EVERGLADE_HERON_LAGOON.x)/EVERGLADE_HERON_LAGOON.rx,(z-EVERGLADE_HERON_LAGOON.z)/EVERGLADE_HERON_LAGOON.rz)-1)*Math.min(EVERGLADE_HERON_LAGOON.rx,EVERGLADE_HERON_LAGOON.rz)<38)return'HERON ROOKERY';if(x<-480*WORLD_SCALE&&z>280*WORLD_SCALE&&z<900*WORLD_SCALE)return'MANGROVE FLATS';if(x>-740&&x<210&&z>-1390&&z<-820)return'MOUNT KALAGA';if(z<-620*WORLD_SCALE)return'NORTH RIDGE';if(x>700*WORLD_SCALE&&z>-250*WORLD_SCALE&&z<180*WORLD_SCALE)return'SUNLINE FARMS';if(z>820*WORLD_SCALE)return'COASTAL HIGHWAY';if(inLake(x,z)||x<-280*WORLD_SCALE&&z>-250*WORLD_SCALE&&z<500*WORLD_SCALE)return'EVERGLADE BASIN';return'LEONIDA HIGHWAY';}
+     function districtAt(x,z){if(nearLeonidaPenitentiary(x,z))return'KELLY COUNTY';if(Math.hypot(x-KEYS_LIGHTHOUSE.x,z-KEYS_LIGHTHOUSE.z)<82)return KEYS_LIGHTHOUSE.name;for(const town of REGION_TOWNS){if(town.profile==='ambrosia'&&x>-470&&x<-320&&z>620&&z<760)return'AMBROSIA CANE FIELDS';const r=(town.offsets.length*21)+78;if(Math.abs(x-town.x)<r&&Math.abs(z-town.z)<r)return town.name;}if(Math.abs(x)<=230&&Math.abs(z)<=220){if(z<-168)return'SUGAR BEACH';return Math.abs(x)<55?'CASSIA DISTRICT':z>65?'PALM GROVE':'OCEAN DRIVE';}if(z>1240*WORLD_SCALE)return'LEONIDA KEYS';if(channelDistance(x,z,EVERGLADE_CYPRESS_CUT.points)<EVERGLADE_CYPRESS_CUT.width+20)return'CYPRESS CUT';if(channelDistance(x,z,EVERGLADE_HERON_RUNOFF.points)<EVERGLADE_HERON_RUNOFF.width+20||inHeronWater(x,z)||Math.abs(Math.hypot((x-EVERGLADE_HERON_LAGOON.x)/EVERGLADE_HERON_LAGOON.rx,(z-EVERGLADE_HERON_LAGOON.z)/EVERGLADE_HERON_LAGOON.rz)-1)*Math.min(EVERGLADE_HERON_LAGOON.rx,EVERGLADE_HERON_LAGOON.rz)<38)return'HERON ROOKERY';if(x<-480*WORLD_SCALE&&z>280*WORLD_SCALE&&z<900*WORLD_SCALE)return'MANGROVE FLATS';if(x>-740&&x<210&&z>-1390&&z<-820)return'MOUNT KALAGA';if(z<-620*WORLD_SCALE)return'NORTH RIDGE';if(x>700*WORLD_SCALE&&z>-250*WORLD_SCALE&&z<180*WORLD_SCALE)return'SUNLINE FARMS';if(z>820*WORLD_SCALE)return'COASTAL HIGHWAY';if(inLake(x,z)||x<-280*WORLD_SCALE&&z>-250*WORLD_SCALE&&z<500*WORLD_SCALE)return'EVERGLADE BASIN';return'LEONIDA HIGHWAY';}
     function nearRegionRoad(x,z,padding=30){return nearestTerrainRoad(x,z,padding)!==null;}
     function smooth01(a,b,v){const t=clamp((v-a)/(b-a),0,1);return t*t*(3-2*t);}
     function inRegionalTown(x,z,margin=0){return REGION_TOWNS.some(t=>townFootprintScore(t,x,z,margin)<=1.12);}
@@ -748,7 +750,7 @@ function addRosewaterWreck(b,x,z,waterline,cleatX,cleatZ,cleatY){
       const cell=22,cols=Math.ceil((WORLD_BOUNDS.maxX-WORLD_BOUNDS.minX)/cell),rows=Math.ceil((WORLD_BOUNDS.maxZ-WORLD_BOUNDS.minZ)/cell);
       for(let ix=0;ix<cols;ix++)for(let iz=0;iz<rows;iz++){
         const x=WORLD_BOUNDS.minX+(ix+.5)*cell+(scatterHash(ix,iz,1)-.5)*20,z=WORLD_BOUNDS.minZ+(iz+.5)*cell+(scatterHash(ix,iz,2)-.5)*20;
-        const roadside=nearRegionRoad(x,z,120);if(!isLand(x,z)||inLake(x,z)||inRegionalTown(x,z,80)||nearRegionRoad(x,z,16)||nearMountKalagaKeepClear(x,z,7)||Math.hypot(x-EVERGLADE_HIDEOUT.x,z-EVERGLADE_HIDEOUT.z)<48||Math.abs(x)<270&&Math.abs(z)<280||x>1250&&x<1600&&z>-330&&z<270)continue;
+        const roadside=nearRegionRoad(x,z,120);if(!isLand(x,z)||inLake(x,z)||inRegionalTown(x,z,80)||nearRegionRoad(x,z,16)||nearLeonidaPenitentiary(x,z,8)||nearMountKalagaKeepClear(x,z,7)||Math.hypot(x-EVERGLADE_HIDEOUT.x,z-EVERGLADE_HIDEOUT.z)<48||Math.abs(x)<270&&Math.abs(z)<280||x>1250&&x<1600&&z>-330&&z<270)continue;
         const pine=z<-1240&&z>-2010&&x<1280,wetland=x<-450&&z>40&&z<1580,islands=z>1800&&z<2260&&x>-650&&x<700,orchard=x>1080&&z>220&&z<1420,shoreDistance=mainlandHalfWidth(z)-Math.abs(x-landCenterX(z)),coastal=shoreDistance<190&&shoreDistance>=0;
         const density=pine ? .99 : wetland ? .97 : islands ? .98 : orchard ? .98 : roadside ? .96 : coastal ? .96 : .90;if(scatterHash(ix,iz,3)>density)continue;
         const ground=terrainHeightAt(x,z),style=scatterHash(ix,iz,4),size=.92+scatterHash(ix,iz,5)*.96;
@@ -820,7 +822,7 @@ function addRosewaterWreck(b,x,z,waterline,cleatX,cleatZ,cleatY){
           const a=path[i-1],c=path[i],dx=c[0]-a[0],dz=c[1]-a[1],length=Math.hypot(dx,dz);if(length<.1)continue;
           while(distanceToNext<length){const t=distanceToNext/length,rx=a[0]+dx*t,rz=a[1]+dz*t,side=scatterHash(serial,2,77)<.5?-1:1,offset=43+scatterHash(serial,3,77)*32,x=rx-side*dz/length*offset,z=rz+side*dx/length*offset,id=serial++;
             distanceToNext+=205+scatterHash(id,4,77)*125;
-            if(scatterHash(id,5,77)>.44||!isLand(x,z)||inLake(x,z)||nearRegionRoad(x,z,20)||inRegionalTown(x,z,125)||Math.abs(x)<390&&Math.abs(z)<400||x>1250&&x<1600&&z>-330&&z<270||Math.hypot(x-MOUNT_KALAGA_TRAILHEAD.x,z-MOUNT_KALAGA_TRAILHEAD.z)<160||placed.some(p=>Math.hypot(x-p[0],z-p[1])<145))continue;
+            if(scatterHash(id,5,77)>.44||!isLand(x,z)||inLake(x,z)||nearRegionRoad(x,z,20)||inRegionalTown(x,z,125)||Math.abs(x)<390&&Math.abs(z)<400||x>1250&&x<1600&&z>-330&&z<270||nearLeonidaPenitentiary(x,z,95)||Math.hypot(x-MOUNT_KALAGA_TRAILHEAD.x,z-MOUNT_KALAGA_TRAILHEAD.z)<160||placed.some(p=>Math.hypot(x-p[0],z-p[1])<145))continue;
             const profile=z>1760&&x>-700&&x<800?'keys':x<-450&&z>0&&z<1580?'marsh':z<-1240&&x<1280?'pine':x>980&&z>-160&&z<1480?'farm':'rural';
             addRoadsideHub(b,x,z,profile,id);if(scatterHash(id,6,77)<.70)addCountyHamlet(b,x,z,profile,id,rx,rz);placed.push([x,z]);
           }
@@ -835,7 +837,7 @@ function addRosewaterWreck(b,x,z,waterline,cleatX,cleatZ,cleatY){
         for(let i=1;i<path.length;i++){
           const a=path[i-1],c=path[i],dx=c[0]-a[0],dz=c[1]-a[1],length=Math.hypot(dx,dz);if(length<.1)continue;
           while(distanceToNext<length){const t=distanceToNext/length,rx=a[0]+dx*t,rz=a[1]+dz*t,id=serial++,side=scatterHash(id,2,81)<.5?-1:1,offset=105+scatterHash(id,3,81)*60,x=rx-side*dz/length*offset,z=rz+side*dx/length*offset;distanceToNext+=330+scatterHash(id,4,81)*175;
-            if(!isLand(x,z)||inLake(x,z)||nearRegionRoad(x,z,28)||inRegionalTown(x,z,165)||Math.abs(x)<420&&Math.abs(z)<420||x>1250&&x<1600&&z>-330&&z<270||Math.hypot(x-MOUNT_KALAGA_TRAILHEAD.x,z-MOUNT_KALAGA_TRAILHEAD.z)<195||placed.some(p=>Math.hypot(x-p[0],z-p[1])<270)||colliders.some(q=>q.kind==='building'&&Math.hypot(x-q.x,z-q.z)<105))continue;
+            if(!isLand(x,z)||inLake(x,z)||nearRegionRoad(x,z,28)||inRegionalTown(x,z,165)||Math.abs(x)<420&&Math.abs(z)<420||x>1250&&x<1600&&z>-330&&z<270||nearLeonidaPenitentiary(x,z,165)||Math.hypot(x-MOUNT_KALAGA_TRAILHEAD.x,z-MOUNT_KALAGA_TRAILHEAD.z)<195||placed.some(p=>Math.hypot(x-p[0],z-p[1])<270)||colliders.some(q=>q.kind==='building'&&Math.hypot(x-q.x,z-q.z)<105))continue;
             const road=nearestRoadLink(x,z);if(!road||road.distance>190)continue;let clearDriveway=true;for(let step=.2;step<1;step+=.2){const px=road.x+(x-road.x)*step,pz=road.z+(z-road.z)*step;if(!isLand(px,pz)||inLake(px,pz)){clearDriveway=false;break;}}if(!clearDriveway)continue;
             const profile=z>1740&&x>-700&&x<800?'keys':x<-450&&z>0&&z<1580?'marsh':z<-1220&&x<1280?'pine':x>980&&z>-160&&z<1480?'farm':'rural';
             addCountyHamlet(b,x,z,profile,id,road.x,road.z);placed.push([x,z]);
@@ -844,6 +846,37 @@ function addRosewaterWreck(b,x,z,waterline,cleatX,cleatZ,cleatY){
         }
         serial+=31;
       }
+    }
+    function addLeonidaPenitentiary(b){
+      const site=LEONIDA_PENITENTIARY,metal=hex(0x4d5a5e),rail=hex(0x7d898b),concrete=hex(0x92928a),darkConcrete=hex(0x656e70),roof=hex(0x555e62),glass=hex(0x294b55),amber=hex(0xd6ad61);
+      function addFenceRun(a,c){
+        const dx=c[0]-a[0],dz=c[1]-a[1],length=Math.hypot(dx,dz),bays=Math.max(1,Math.ceil(length/3.5));let previous=null;
+        for(let i=0;i<=bays;i++){
+          const t=i/bays,x=a[0]+dx*t,z=a[1]+dz*t,y=terrainHeightAt(x,z);
+          b.segment([x,y+.12,z],[x,y+3.28,z],.09,metal,6);
+          if(previous){
+            for(const rise of [.48,1.68,3.12])b.segment([previous.x,previous.y+rise,previous.z],[x,y+rise,z],rise===3.12?.075:.06,rail,6);
+            for(let bar=1;bar<5;bar++){const bt=bar/5,bx=previous.x+(x-previous.x)*bt,bz=previous.z+(z-previous.z)*bt,by=terrainHeightAt(bx,bz);b.segment([bx,by+.18,bz],[bx,by+3.12,bz],.035,metal,5);}
+            colliders.push({x:(previous.x+x)*.5,z:(previous.z+z)*.5,w:Math.abs(x-previous.x)+.22,d:Math.abs(z-previous.z)+.22,baseY:Math.min(previous.y,y),topY:Math.max(previous.y,y)+3.35,kind:'fence'});
+          }
+          previous={x,y,z};
+        }
+      }
+      function addBlock(x,z,w,d,h,wall=concrete,cap=roof){
+        const y=terrainHeightAt(x,z);b.box(x,y+h*.5,z,w,h,d,wall);b.box(x,y+.22,z,w+.4,.44,d+.4,darkConcrete);b.box(x,y+h+.20,z,w+1,.40,d+1,cap);
+        const windows=Math.max(3,Math.floor(d/4.8));for(let i=0;i<windows;i++){const wz=z-d*.34+i*(d*.68/Math.max(1,windows-1)),face=x+w*.5+.055;b.box(face,y+h*.62,wz,.09,2.1,1.12,glass);for(const offset of [-.30,0,.30])b.segment([face+.06,y+h*.62-1.04,wz+offset],[face+.06,y+h*.62+1.04,wz+offset],.034,metal,5);}
+        b.box(x,y+h+.43,z-d*.28,2.2,.46,1.8,darkConcrete);b.box(x,y+h+.43,z+d*.28,2.2,.46,1.8,darkConcrete);colliders.push({x,z,w,d,baseY:y,topY:y+h+.42,kind:'building'});return y;
+      }
+      const fence={west:-752,east:-648,north:-650,south:-570,gateNorth:-619,gateSouth:-601};
+      addFenceRun([fence.west,fence.north],[fence.east,fence.north]);addFenceRun([fence.west,fence.south],[fence.east,fence.south]);addFenceRun([fence.west,fence.north],[fence.west,fence.south]);addFenceRun([fence.east,fence.north],[fence.east,fence.gateNorth]);addFenceRun([fence.east,fence.gateSouth],[fence.east,fence.south]);
+      for(const [x,z] of [[-746,-644],[-652,-644],[-746,-576],[-652,-576]]){
+        const y=terrainHeightAt(x,z);b.box(x,y+3.1,z,4.5,6.1,4.5,darkConcrete);b.box(x,y+6.35,z,5.4,.42,5.4,roof);b.box(x,y+4.35,z+2.30,3.25,1.36,.12,glass);for(const bar of [-.88,0,.88])b.segment([x+bar,y+3.66,z+2.38],[x+bar,y+5.04,z+2.38],.045,metal,5);b.box(x,y+6.72,z+2.38,1.0,.16,.24,amber);colliders.push({x,z,w:5.6,d:5.6,baseY:y,topY:y+6.9,kind:'building'});
+      }
+      addBlock(-714,-622,32,16,9,hex(0x858985),hex(0x4b5358));addBlock(-714,-588,32,16,9,hex(0x898984),hex(0x50575a));addBlock(-681,-610,17,25,8,hex(0xa09a87),hex(0x6b6256));addBlock(-660,-628,8,8,4.6,darkConcrete,roof);addBlock(-660,-592,8,8,4.6,darkConcrete,roof);
+      for(const x of [-732,-695,-658]){const y=terrainHeightAt(x,-610);b.segment([x,y,-610],[x,y+7.2,-610],.10,metal,6);b.box(x,y+7.35,-610,.40,.28,.40,amber);}
+      const gateY=terrainHeightAt(-651,-610);b.box(-666,gateY+.08,-610,35,.16,22,hex(0x565e5d));b.box(-630,gateY+2.55,-626,.22,4.8,14,hex(0x314b56));b.box(-629.82,gateY+4.58,-626,.12,.16,10,amber);b.box(-629.82,gateY+.52,-626,.12,.16,10,amber);b.box(-648,gateY+1.1,-616,.18,2.2,.18,amber);b.segment([-648,gateY+2.18,-616],[-643,gateY+4.5,-616],.13,amber,6);
+      b.box(-670,gateY+4.4,-610,1.0,.22,1.0,amber);
+      civicFacilities.push({x:site.x,z:site.z,type:'police',label:'LEONIDA PENITENTIARY',entryX:-636,entryZ:-610,entryYaw:-2.0});
     }
     function addMountKalagaPark(b){
       const site=MOUNT_KALAGA_TRAILHEAD,wood=hex(0x765844),darkWood=hex(0x4b4037),sign=hex(0x284d47),teal=hex(0x36a99e),cream=hex(0xe5d7b4),ground=surfaceHeightAt(site.x,site.z),cabinX=-361,cabinZ=-920,cabinY=surfaceHeightAt(cabinX,cabinZ);
@@ -940,7 +973,7 @@ function addRosewaterWreck(b,x,z,waterline,cleatX,cleatZ,cleatY){
       for(const path of REGION_ROADS)addRegionalRoad(b,path,path===REGION_ROADS[0]?13:10);for(const path of WORLD_CONNECTORS)addRegionalRoad(b,path,10,path===MOUNT_KALAGA_ACCESS?mountKalagaAccessSurfaceY:regionalRoadSurfaceY);addRegionalRoad(b,AIRPORT_ACCESS_ROAD,11);addRegionalRoad(b,AIRPORT_TAXI_ROAD,8);addRegionalRoad(b,GELLHORN_RACEWAY_CONNECTOR,10);addRacewayRoad(b,GELLHORN_RACEWAY_LOOP,18);addRacewayRoad(b,GELLHORN_PIT_LANE,8);
       for(const town of REGION_TOWNS)addRegionalTown(b,town);
       for(const x of [-300,-180,-60,60,180,300]){if(isLand(x,1280)&&!nearRegionRoad(x,1280,35))addPalm(b,x,1280,.78,terrainHeightAt(x,1280));}
-      addMountKalagaPark(b);addAirport(b);addEvergladeLaunch(b);addGrassriversHideout(b);addGlasswaterLighthouse(b);addKeysBoatYard(b);return gpuMesh(b);}
+      addMountKalagaPark(b);addLeonidaPenitentiary(b);addAirport(b);addEvergladeLaunch(b);addGrassriversHideout(b);addGlasswaterLighthouse(b);addKeysBoatYard(b);return gpuMesh(b);}
     const world=buildWorld(),worldOceanMesh=gpuMesh(worldOceanBuilder),ferrisWheel=gpuMesh(ferrisBuilder);worldBuilder.chunks.clear();worldBuilder.p.length=0;worldBuilder.n.length=0;worldBuilder.c.length=0;worldOceanBuilder.p.length=0;worldOceanBuilder.n.length=0;worldOceanBuilder.c.length=0;ferrisBuilder.p.length=0;ferrisBuilder.n.length=0;ferrisBuilder.c.length=0;
     const glasswaterBeamBuilder=new Builder();glasswaterBeamBuilder.quad([0,0,0],[.42,0,0],[17.5,0,-108],[-17.5,0,-108],hex(0xffe0a0),[0,1,0]);const glasswaterBeam=gpuMesh(glasswaterBeamBuilder);const frustumPlanes=new Float32Array(24);
     function setFrustumPlane(index,x,y,z,w){const inv=1/(Math.hypot(x,y,z)||1),offset=index*4;frustumPlanes[offset]=x*inv;frustumPlanes[offset+1]=y*inv;frustumPlanes[offset+2]=z*inv;frustumPlanes[offset+3]=w*inv;}
