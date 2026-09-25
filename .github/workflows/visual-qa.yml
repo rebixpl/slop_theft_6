@@ -3,6 +3,9 @@ name: Visual QA
 on:
   push:
     branches: [graphics/visual-overhaul]
+    paths: ['game.js', 'index.html', 'graphics/**', 'tests/**', 'package.json']
+  pull_request:
+    paths: ['game.js', 'index.html', 'graphics/**', 'tests/**', 'package.json']
   workflow_dispatch:
 
 permissions:
