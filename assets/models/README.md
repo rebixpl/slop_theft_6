@@ -8,6 +8,18 @@ Neon Coast keeps its custom WebGL renderer. `asset-loader.js` adds a deliberatel
 
 Two render LOD nodes ship in the GLB. The game uses LOD0 inside 56 m and LOD1 farther away. The current renderer consumes material base colors, roughness, metallic, and emissive factors with a lightweight directional/specular pass. The source GLB retains UVs and PBR values; this static loader does not yet sample GLB image textures.
 
+## Sunport Art Deco hotel
+
+`sunport-artdeco-hotel.glb` is the Palmer House landmark in a reserved central Sunport block. Its 26 m class facade uses stepped Art Deco massing, recessed sea-glass storefronts, brass trim, balconies, a blade sign, and emissive `PALMER HOUSE` lettering. It has seven named PBR material groups, a ground-center pivot, UVs, and `ANCHOR_Entry`. The editable `COL_SunportArtDecoHotel` proxy is retained in the Blender source; gameplay keeps a tagged building collider at the same reserved footprint.
+
+The GLB ships LOD0 (9,956 triangles) and LOD1 (8,562 triangles); gameplay switches at 110 m. Blender 5.0 builds the model from reproducible geometry with applied transforms and documented dimensions. The game keeps its custom WebGL renderer and uses the existing static GLB loader: material factors and emissive color render in game, while image textures, skeletal animation, and collision import remain outside that loader's scope. A procedural facade remains visible if the GLB cannot load.
+
+Regenerate with:
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.0\blender.exe' --background --factory-startup --python assets/models/source/build_sunport_artdeco_hotel.py
+```
+
 ## Regenerate
 
 With Blender 5.0 installed, run from the project root:
