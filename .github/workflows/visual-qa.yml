@@ -1,0 +1,30 @@
+name: Visual QA
+
+on:
+  push:
+    branches: [graphics/visual-overhaul]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check source syntax
+        run: |
+          node --check game.js
+          node --check asset-loader.js
+      - name: Package reproducible source snapshot
+        run: git archive --format=zip HEAD -o /tmp/slop-theft-source.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: visual-source
+          path: /tmp/slop-theft-source.zip
+          retention-days: 1
+          if-no-files-found: error
