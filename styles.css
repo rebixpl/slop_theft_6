@@ -138,3 +138,30 @@
 .pulse-lead button:disabled{border-color:rgba(255,255,255,.16);color:rgba(255,244,218,.38);cursor:default}.pulse-empty{margin:0;padding:12px;border:1px dashed rgba(255,255,255,.16);color:rgba(255,244,218,.55);font-size:9px;line-height:1.5}.pulse-foot{margin-top:14px;color:rgba(255,244,218,.42);font-size:7px;font-weight:800;letter-spacing:.1em;text-align:center}
 #mission #pulse-toggle{margin:9px 0 0 5px;padding:6px 8px;border:1px solid rgba(255,125,184,.42);border-radius:2px;background:rgba(39,27,46,.82);color:#ffabd0;font-size:8px;font-weight:900;letter-spacing:.12em;cursor:pointer;pointer-events:auto}#mission #pulse-toggle:hover{border-color:var(--cyan);color:var(--cyan)}
 @media(max-width:520px){#pulse-card{padding:16px}.pulse-heading h2{font-size:23px}.pulse-heading button{padding:7px 6px;font-size:7px}}
+
+
+/* On-demand world-layout inspector (F8). */
+#layout-audit-panel {
+  position: fixed;
+  z-index: 90;
+  top: 76px;
+  right: 20px;
+  width: min(460px, calc(100vw - 40px));
+  max-height: calc(100vh - 96px);
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid rgba(111, 221, 202, .52);
+  border-radius: 10px;
+  color: #e6f1ef;
+  background: rgba(7, 15, 23, .94);
+  box-shadow: 0 14px 44px rgba(0, 0, 0, .45);
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
+  backdrop-filter: blur(10px);
+}
+#layout-audit-panel[hidden] { display: none !important; }
+#layout-audit-panel header { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 9px; letter-spacing: .08em; }
+#layout-audit-panel header span { color: #91aaa9; letter-spacing: 0; }
+#layout-audit-panel canvas { display: block; width: 100%; height: auto; border: 1px solid rgba(157, 184, 183, .22); background: #101922; image-rendering: pixelated; }
+#layout-audit-panel .layout-audit-summary { margin: 8px 0 5px; color: #79deca; }
+#layout-audit-panel .layout-audit-report { max-height: 180px; overflow: auto; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: #d5dedb; }
+@media (max-width: 640px) { #layout-audit-panel { top: 60px; right: 10px; width: calc(100vw - 20px); max-height: calc(100vh - 70px); } }
