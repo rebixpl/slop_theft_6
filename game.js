@@ -1448,13 +1448,15 @@ function refreshWildlifeCard(){const count=wildlifeWatch.habitats.size,missing=W
     function selectWeapon(index){if(index<0||index>3)return;selectedWeapon=index;updateWeaponHUD();if(inventoryOpen)toggleInventory(false);say(weaponNames[index]+' equipped.');}
     function toggleInventory(force){if(!started||finished||mapOpen||garageOpen)return;if(driving){say('Exit your vehicle to use weapons.');return;}inventoryOpen=force===undefined?!inventoryOpen:force;$('inventory').classList.toggle('show',inventoryOpen);$('inventory').setAttribute('aria-hidden',String(!inventoryOpen));keys.clear();fireHeld=false;if(inventoryOpen&&document.pointerLockElement===canvas)document.exitPointerLock?.();$('hud').classList.toggle('on-foot',!inventoryOpen&&!driving);}
     function addWantedHeat(amount){wantedHeat=clamp(wantedHeat+amount,0,100);}
+    const WANTED_THRESHOLDS=[0,4,11,23,39,60,82],WANTED_LABELS=['','OFFICERS RESPONDING','ACTIVE PURSUIT','PURSUIT ESCALATING','COUNTY RESPONSE','FELONY PURSUIT','ALL UNITS'],wantedHud=$('wanted'),wantedState=$('wanted-state'),wantedStars=$('wanted-stars').querySelectorAll('i');let lastRenderedWantedLevel=-1,lastWantedStateText='';
     function updateWantedHUD(dt){
-      const previous=wantedLevel,units=policeUnits.filter(unit=>!unit.destroyed&&!unit.stolen),groundSearching=units.length>0&&units.every(unit=>unit.engaged&&unit.searching),searching=policeAirSupport.active?policeAirSupport.searching&&(!units.length||groundSearching):groundSearching;
-      if(wantedHeat>0&&((!units.length&&!policeAirSupport.active)||searching))wantedHeat=Math.max(0,wantedHeat-dt*(searching?.62:.42));
-      const thresholds=[0,4,11,23,39,60,82];let level=0;for(let i=1;i<thresholds.length;i++)if(wantedHeat>=thresholds[i])level=i;wantedLevel=level;
-      document.querySelectorAll('#wanted-stars i').forEach((star,index)=>star.classList.toggle('lit',index<level));
-      const labels=['','OFFICERS RESPONDING','ACTIVE PURSUIT','PURSUIT ESCALATING','COUNTY RESPONSE','FELONY PURSUIT','ALL UNITS'];
-      const pursuitSighted=units.some(unit=>unit.seesPlayer)||policeAirSupport.active&&policeAirSupport.seesPlayer;setTextIfChanged('wanted-state',level?(pursuitSighted?labels[level]:(units.length||policeAirSupport.active)?'SEARCHING AREA':'DISPATCH EN ROUTE'):'NO HEAT');$('wanted').setAttribute('aria-label','Wanted level: '+level+' of 6');
+      const previous=wantedLevel;let activeUnits=0,groundSearching=true,pursuitSighted=policeAirSupport.active&&policeAirSupport.seesPlayer;
+      for(const unit of policeUnits){if(unit.destroyed||unit.stolen)continue;activeUnits++;if(!unit.engaged||!unit.searching)groundSearching=false;if(unit.seesPlayer)pursuitSighted=true;}
+      groundSearching=activeUnits>0&&groundSearching;const searching=policeAirSupport.active?policeAirSupport.searching&&(!activeUnits||groundSearching):groundSearching;
+      if(wantedHeat>0&&((!activeUnits&&!policeAirSupport.active)||searching))wantedHeat=Math.max(0,wantedHeat-dt*(searching?.62:.42));
+      let level=0;for(let i=1;i<WANTED_THRESHOLDS.length;i++)if(wantedHeat>=WANTED_THRESHOLDS[i])level=i;wantedLevel=level;
+      if(level!==lastRenderedWantedLevel){for(let i=0;i<wantedStars.length;i++){const lit=i<level;if(wantedStars[i].classList.contains('lit')!==lit)wantedStars[i].classList.toggle('lit',lit);}const ariaLabel='Wanted level: '+level+' of 6';if(wantedHud.getAttribute('aria-label')!==ariaLabel)wantedHud.setAttribute('aria-label',ariaLabel);lastRenderedWantedLevel=level;}
+      const stateText=level?(pursuitSighted?WANTED_LABELS[level]:(activeUnits||policeAirSupport.active)?'SEARCHING AREA':'DISPATCH EN ROUTE'):'NO HEAT';if(stateText!==lastWantedStateText){wantedState.textContent=stateText;lastWantedStateText=stateText;}
       if(started&&level>previous)say(level===1?'VCPD DISPATCH · local unit en route':level>=4?'PURSUIT ALERT · county units joining':'POLICE PURSUIT · suspect located');else if(started&&previous>0&&level===0)say('You lost the police tail · wanted level clear');
     }
     function updateWildlife(dt){
@@ -1493,7 +1495,15 @@ function refreshWildlifeCard(){const count=wildlifeWatch.habitats.size,missing=W
       }
       if(wildlifeWatch.completeTimer>0){wildlifeWatch.completeTimer=Math.max(0,wildlifeWatch.completeTimer-dt);if(wildlifeWatch.completeTimer===0){$('wildlife-card').classList.remove('show','complete');wildlifeWatch.complete=false;}}
     }
-    const PED_FULL_RATE_RADIUS=260,PED_FAR_STEP_SECONDS=.12;
+    const PED_FULL_RATE_RADIUS=260,PED_FAR_STEP_SECONDS=.12,PED_GROUND_SAMPLE_STEP=.45;
+    function updatePedestrianGround(p){
+      const dirX=p.axis==='x'?p.dir:0,dirZ=p.axis==='z'?p.dir:0,deltaX=p.x-(p.groundSampleX??NaN),deltaZ=p.z-(p.groundSampleZ??NaN),moved=deltaX*dirX+deltaZ*dirZ;
+      if(p.groundSampleDir!==p.dir||!Number.isFinite(p.groundSampleStartY)||moved<0||moved>=PED_GROUND_SAMPLE_STEP){
+        const nextX=p.axis==='x'?clamp(p.x+dirX*PED_GROUND_SAMPLE_STEP,p.min,p.max):p.x,nextZ=p.axis==='z'?clamp(p.z+dirZ*PED_GROUND_SAMPLE_STEP,p.min,p.max):p.z;
+        p.groundSampleX=p.x;p.groundSampleZ=p.z;p.groundSampleDir=p.dir;p.groundSampleDistance=Math.hypot(nextX-p.x,nextZ-p.z);p.groundSampleStartY=surfaceHeightAt(p.x,p.z);p.groundSampleEndY=p.groundSampleDistance>1e-4?surfaceHeightAt(nextX,nextZ):p.groundSampleStartY;
+      }
+      const progress=p.groundSampleDistance>1e-4?clamp(moved/p.groundSampleDistance,0,1):0;p.groundY=p.groundSampleStartY+(p.groundSampleEndY-p.groundSampleStartY)*progress;
+    }
     function updatePedestrians(dt){
       const playerPos=driving?(vehicleType==='plane'?[aircraft.x,aircraft.z]:[activeRoadRide().x,activeRoadRide().z]):[player.x,player.z];
       for(const p of pedestrians){
@@ -1514,7 +1524,7 @@ function refreshWildlifeCard(){const count=wildlifeWatch.habitats.size,missing=W
           if(p.x<=p.min){p.x=p.min;p.dir=1;reachedGoal=true;}else if(p.x>=p.max){p.x=p.max;p.dir=-1;reachedGoal=true;}
           p.yaw=p.dir>0?-Math.PI/2:Math.PI/2;p.goalX=p.dir>0?p.max:p.min;p.goalZ=p.z;
         }
-        p.groundY=surfaceHeightAt(p.x,p.z);p.phase+=simDt*(p.panic>0?11:6.5);p.blend+=(1-p.blend)*Math.min(1,simDt*5);
+        if(p.officer)p.groundY=surfaceHeightAt(p.x,p.z);else updatePedestrianGround(p);p.phase+=simDt*(p.panic>0?11:6.5);p.blend+=(1-p.blend)*Math.min(1,simDt*5);
         if(reachedGoal&&p.panic<=0)p.pause=p.stopTime*(.72+(p.phase%1)*.65);
       }
     }
