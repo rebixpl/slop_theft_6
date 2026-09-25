@@ -26,6 +26,7 @@ jobs:
           folder = pathlib.Path('.visual-update')
           manifest = json.loads((folder / 'manifest.json').read_text())
           encoded = ''.join((folder / ('part-' + str(i) + '.txt')).read_text().strip() for i in range(manifest['parts']))
+          encoded = encoded.replace('Xbyr9AW82e', 'Xbyj9AW82e')
           data = zlib.decompress(base64.b64decode(encoded, validate=True))
           assert hashlib.sha256(data).hexdigest() == manifest['sha256'], 'Transfer checksum mismatch'
           allowed = {'game.js','index.html','.gitignore','package.json','graphics/geometry.js','graphics/shaders.js','graphics/renderer.js','tests/graphics.test.cjs','tests/browser-smoke.cjs','docs/visual-overhaul-plan.md'}
