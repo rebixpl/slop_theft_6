@@ -44,6 +44,7 @@
             <div class="control-row"><span class="key wide">SPACE</span><span>Jump · handbrake in your car · cast / reel at either fishing spot</span></div>
             <div class="control-row"><span class="key wide">SHIFT</span><span>Sprint on foot</span></div>
             <div class="control-row"><span class="key">M</span><span>Click a street on the map to plot a route</span></div>
+            <div class="control-row"><span class="key">P</span><span>Open Neon Coast Pulse for live calls and nearby activities</span></div>
             <div class="control-row"><span class="key">T</span><span>Switch on the neon hour</span></div>
           </div>
           <button id="start" type="button"><span>Enter the coast</span><span>↗</span></button>
@@ -53,7 +54,7 @@
     </section>
     <section id="hud" aria-live="polite">
       <div class="hud-brand">NEON <em>COAST</em><small id="district">CASSIA DISTRICT</small></div>
-      <div id="mission"><div class="eyebrow" id="mission-eyebrow">ACTIVE JOB · 01</div><div id="mission-title">The long way home</div><div id="mission-copy">Take the Sunset Tape to Pink Palm Pier. Your ride is right beside you.</div><div id="gellhorn-arc-status" data-state="locked">PORT GELLHORN FILE · FIND MARA IN ROOM 06</div><button id="next-mission" type="button" aria-label="Choose the next mission">J · NEXT JOB</button></div>
+      <div id="mission"><div class="eyebrow" id="mission-eyebrow">ACTIVE JOB · 01</div><div id="mission-title">The long way home</div><div id="mission-copy">Take the Sunset Tape to Pink Palm Pier. Your ride is right beside you.</div><div id="gellhorn-arc-status" data-state="locked">PORT GELLHORN FILE · FIND MARA IN ROOM 06</div><button id="next-mission" type="button" aria-label="Choose the next mission">J · NEXT JOB</button> <button id="pulse-toggle" type="button" aria-label="Open Neon Coast Pulse">P - PULSE</button></div>
       <div id="wildlife-card" aria-live="polite"><div class="eyebrow">LEONIDA · FIELD NOTES</div><strong id="wildlife-count">0 / 3</strong><small id="wildlife-hint">Photograph a deer, a wetland animal and a coastal pelican across Leonida with C.</small></div>
       <div id="street-event-card" aria-live="polite"><div class="eyebrow">SUNPORT � LIVE CALL</div><strong id="street-event-title">STREET ROBBERY</strong><small id="street-event-copy">E � INTERVENE � F � CURRENT WEAPON</small></div>
       <div id="fishing-card" aria-live="polite"><div class="eyebrow" id="fishing-title">PINK PALM PIER · AFTER HOURS</div><strong id="fishing-count">0 / 3 · $0</strong><small id="fishing-hint">E to start · SPACE to cast and reel in time</small></div>
@@ -84,6 +85,9 @@
     <div id="map-overlay" role="dialog" aria-modal="true" aria-label="City map">
       <div id="map-panel"><div class="map-head"><div><h2>Soluna Bay Region</h2><p>Bayview · Port Gellhorn · North Ridge · Mount Kalaga · Mangrove Flats · Sunport · The Keys</p></div><button class="map-close" id="map-close">ESC · CLOSE</button></div><canvas id="worldmap" width="620" height="620" aria-label="Soluna Bay regional map"></canvas><div class="map-foot"><span><strong id="destination-label">★ PINK PALM PIER</strong> · click a road to set a route · right-click to clear</span><button class="map-action" id="clear-route" type="button">CLEAR ROUTE</button></div></div>
     </div>
+    <section id="pulse-overlay" role="dialog" aria-modal="true" aria-label="Neon Coast Pulse" aria-hidden="true">
+      <div id="pulse-card"><header class="pulse-heading"><div><small>LEONIDA / LOCAL SIGNAL</small><h2>NEON COAST PULSE</h2></div><button id="pulse-close" type="button" aria-label="Close Neon Coast Pulse">P / ESC - CLOSE</button></header><p class="pulse-intro">Street calls and nearby spots, routed from where you are. Pinning a lead leaves your current job alone.</p><div id="pulse-leads" aria-live="polite"></div><footer class="pulse-foot">P or ESC to put the phone away - route pins use the nearest street</footer></div>
+    </section>
     <section id="inventory" role="dialog" aria-modal="true" aria-label="Weapon inventory" aria-hidden="true">
       <div id="inventory-card"><div class="inventory-heading"><div><small>ON FOOT · QUICK SELECT</small><h2>PERSONAL ARMORY</h2></div><button id="inventory-close" type="button">ESC · CLOSE</button></div><div id="inventory-slots">
         <button class="weapon-slot" type="button" data-weapon="0"><kbd>1</kbd><span class="weapon-icon fists-icon">✊</span><strong>FISTS</strong><small>MELEE · QUICK</small></button>
