@@ -1,0 +1,57 @@
+name: Visual QA
+on:
+  push:
+    branches: [graphics/visual-overhaul]
+    paths: ['game.js', 'index.html', 'styles.css', 'asset-loader.js', 'graphics/**', 'ui/**', 'tests/**', 'package.json', '.github/workflows/visual-qa.yml']
+  pull_request:
+    paths: ['game.js', 'index.html', 'styles.css', 'asset-loader.js', 'graphics/**', 'ui/**', 'tests/**', 'package.json', '.github/workflows/visual-qa.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: visual-qa-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript, geometry and texture loading
+        shell: bash
+        run: |
+          node --check game.js
+          node --check asset-loader.js
+          node --check ui/interface.js
+          npm test 2>&1 | tee /tmp/unit-tests.txt
+      - name: Install test browser
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.1
+          npx playwright install --with-deps chromium
+      - name: Verify renderer pixels and responsive UI
+        shell: bash
+        run: node --test tests/renderer.test.cjs tests/interface.test.cjs 2>&1 | tee /tmp/renderer-tests.txt
+      - name: HTTP game and atlas checks
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/server.log 2>&1 &
+          node tests/browser-smoke.cjs
+      - name: Package source snapshot
+        if: always()
+        run: git archive --format=zip HEAD -o /tmp/slop-theft-source.zip
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-evidence
+          path: |
+            /tmp/visual-qa
+            /tmp/unit-tests.txt
+            /tmp/renderer-tests.txt
+            /tmp/server.log
+            /tmp/slop-theft-source.zip
+          retention-days: 3
+          if-no-files-found: error
