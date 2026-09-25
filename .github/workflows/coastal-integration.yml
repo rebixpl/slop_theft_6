@@ -2,7 +2,7 @@ name: Verify coastal architecture and interface
 on:
   push:
     branches: [graphics/visual-overhaul]
-    paths: ['.coastal-update/edits.json']
+    paths: ['.coastal-update/fixes.json']
 permissions:
   contents: write
 concurrency:
@@ -23,22 +23,24 @@ jobs:
         run: |
           import hashlib, json, pathlib
           allowed = {'game.js', 'graphics/shaders.js', 'index.html', 'package.json', 'tests/browser-smoke.cjs'}
-          edits = json.loads(pathlib.Path('.coastal-update/edits.json').read_text())
-          assert {item['path'] for item in edits} == allowed
-          outputs = []
-          for item in edits:
-              destination = pathlib.Path(item['path'])
-              current = destination.read_bytes()
-              assert hashlib.sha256(current).hexdigest() == item['before'], 'Source changed: ' + item['path']
-              lines = current.decode().splitlines(True)
-              for begin, end, replacement in reversed(item['edits']):
-                  assert 0 <= begin <= end <= len(lines)
-                  lines[begin:end] = [replacement]
-              updated = ''.join(lines).encode()
-              assert hashlib.sha256(updated).hexdigest() == item['after'], 'Result checksum mismatch: ' + item['path']
-              outputs.append((destination, updated))
-          for destination, updated in outputs:
-              destination.write_bytes(updated)
+          outputs = {}
+          for source in ['edits.json', 'fixes.json']:
+              edits = json.loads(pathlib.Path('.coastal-update', source).read_text())
+              for item in edits:
+                  assert item['path'] in allowed, 'Unexpected destination'
+                  destination = pathlib.Path(item['path'])
+                  current = outputs.get(item['path'], destination.read_bytes())
+                  assert hashlib.sha256(current).hexdigest() == item['before'], 'Source changed: ' + item['path']
+                  lines = current.decode().splitlines(True)
+                  for begin, end, replacement in reversed(item['edits']):
+                      assert 0 <= begin <= end <= len(lines)
+                      lines[begin:end] = [replacement]
+                  updated = ''.join(lines).encode()
+                  assert hashlib.sha256(updated).hexdigest() == item['after'], 'Result checksum mismatch: ' + item['path']
+                  outputs[item['path']] = updated
+          assert set(outputs) == allowed
+          for destination, updated in outputs.items():
+              pathlib.Path(destination).write_bytes(updated)
           print('Applied and verified', len(outputs), 'source files.')
       - name: Syntax and unit tests
         shell: bash
