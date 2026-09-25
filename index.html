@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -7,6 +7,9 @@
   <title>Neon Coast — After Hours</title>
   <link rel="stylesheet" href="./styles.css">
   <script defer src="./asset-loader.js"></script>
+  <script defer src="./graphics/geometry.js"></script>
+  <script defer src="./graphics/shaders.js"></script>
+  <script defer src="./graphics/renderer.js"></script>
 </head>
 <body>
   <main id="shell">
@@ -167,7 +170,8 @@
         script.onerror = () => window.neonCoastLoadingFailed(true);
         document.body.append(script);
       };
-      requestAnimationFrame(() => requestAnimationFrame(startGame));
+      if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>requestAnimationFrame(startGame),{once:true});
+      else requestAnimationFrame(startGame);
     })();
   </script>
 </body>
