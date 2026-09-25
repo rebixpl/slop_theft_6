@@ -9,22 +9,39 @@ permissions:
   contents: read
 
 jobs:
-  source:
+  browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Check source syntax
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript
         run: |
           node --check game.js
           node --check asset-loader.js
+          if test -f tests/graphics.test.cjs; then node --test tests/graphics.test.cjs; fi
+      - name: Install test browser
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.1
+          npx playwright install --with-deps chromium
+      - name: Browser checks
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/server.log 2>&1 &
+          node tests/browser-smoke.cjs
       - name: Package reproducible source snapshot
+        if: always()
         run: git archive --format=zip HEAD -o /tmp/slop-theft-source.zip
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: visual-source
-          path: /tmp/slop-theft-source.zip
-          retention-days: 1
+          name: visual-evidence
+          path: |
+            /tmp/visual-qa
+            /tmp/server.log
+            /tmp/slop-theft-source.zip
+          retention-days: 3
           if-no-files-found: error
