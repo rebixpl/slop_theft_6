@@ -1,7 +1,7 @@
 'use strict';
 const {test,before,after}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),{chromium}=require('playwright');
 let browser;before(async()=>{browser=await chromium.launch({executablePath:process.env.QA_BROWSER||undefined,headless:true});});after(async()=>browser?.close());
-async function pageFor(viewport){const page=await browser.newPage({viewport});const root=path.join(__dirname,'..');let html=fs.readFileSync(path.join(root,'index.html'),'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace(/<link\b[^>]*>/gi,'');const css=['styles.css','ui/coastal.css'].map(f=>fs.readFileSync(path.join(root,f),'utf8')).join('\n').replace(/url\([^)]*\)/g,'none');await page.setContent(html);await page.addStyleTag({content:css});await page.evaluate(()=>{document.getElementById('loading-screen')?.remove();document.getElementById('menu').remove();document.getElementById('hud').style.opacity=1;document.getElementById('map-overlay').classList.add('show');});return page;}
+async function pageFor(viewport){const page=await browser.newPage({viewport});const root=path.join(__dirname,'..');let html=fs.readFileSync(path.join(root,'index.html'),'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace(/<link\b[^>]*>/gi,'');const css=['styles.css','ui/coastal.css'].map(f=>fs.readFileSync(path.join(root,f),'utf8')).join('\n').replace(/url\([^)]*\)/g,'none');await page.setContent(html);await page.addStyleTag({content:css});await page.evaluate(()=>{document.getElementById('loading-screen')?.remove();document.getElementById('menu').remove();document.getElementById('hud').classList.add('active');document.getElementById('map-overlay').classList.add('show');});return page;}
 test('atlas header, map, destination and footer fit desktop and mobile without canvas sizing feedback',async()=>{
  for(const viewport of [{width:1280,height:800},{width:900,height:560},{width:390,height:844}]){const p=await pageFor(viewport);try{
   const bounds=await p.evaluate(()=>{const ids=['map-panel','worldmap','map-close','clear-route'];return [...ids.map(id=>document.getElementById(id)),document.querySelector('.map-foot')].map(el=>({id:el.id||el.className,x:el.getBoundingClientRect().x,y:el.getBoundingClientRect().y,w:el.getBoundingClientRect().width,h:el.getBoundingClientRect().height}));});
@@ -17,5 +17,11 @@ test('location UI controls update actual view state and restore focus',async()=>
   await p.locator('#map-player').click();assert.deepEqual(await p.evaluate(()=>testView),{x:100,z:200,zoom:6});
   await p.locator('#map-fit').click();assert.deepEqual(await p.evaluate(()=>testView),{x:0,z:0,zoom:1});
   await p.locator('[data-map-category="service"]').click();assert.equal(await p.locator('.map-place').count(),0);assert.equal(await p.locator('.map-empty').innerText(),'No matching locations.');
+  await p.locator('#clear-route').focus();await p.keyboard.press('Tab');assert.equal(await p.evaluate(()=>document.activeElement.id),'map-close');
+  await p.keyboard.press('Shift+Tab');assert.equal(await p.evaluate(()=>document.activeElement.id),'clear-route');
+  await p.evaluate(()=>{document.getElementById('map-overlay').classList.remove('show');testUI.open(false);});
+  await p.locator('#map-open').click();assert.equal(await p.evaluate(()=>document.activeElement.id),'map-close');
+  await p.locator('#map-search').focus();await p.keyboard.press('Escape');assert.equal(await p.locator('#map-overlay').evaluate(el=>el.classList.contains('show')),false);
+  assert.equal(await p.evaluate(()=>document.activeElement.id),'map-open');
  }finally{await p.close();}
 });
