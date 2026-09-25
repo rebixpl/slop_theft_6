@@ -7,6 +7,17 @@ function project(x,z,w,h,v){const s=scale(w,h,v);return[w/2+(x-v.x)*s,h/2+(z-v.z
 function unproject(x,y,w,h,v){const s=scale(w,h,v);return[v.x+(x-w/2)/s,v.z+(y-h/2)/s];}
 function zoomAt(v,factor,x,y,w,h){const anchor=unproject(x,y,w,h,v);v.zoom=clamp(v.zoom*factor,1,16);const moved=unproject(x,y,w,h,v);v.x+=anchor[0]-moved[0];v.z+=anchor[1]-moved[1];}
 function filterPlaces(places,query,category){const q=query.trim().toLowerCase();return places.filter(p=>(category==='all'||p.type===category)&&p.name.toLowerCase().includes(q));}
+// Select whole labels in screen space. Zooming reveals names as they separate.
+function placeMapLabels(labels,width,height,padding=5){
+ const placed=[],rects=[];
+ for(const label of [...labels].sort((a,b)=>(b.priority||0)-(a.priority||0))){
+  const q={left:label.x-label.width/2-padding,right:label.x+label.width/2+padding,top:label.y-label.height-padding,bottom:label.y+padding};
+  if(q.left<0||q.top<0||q.right>width||q.bottom>height)continue;
+  if(rects.some(r=>q.left<r.right&&q.right>r.left&&q.top<r.bottom&&q.bottom>r.top))continue;
+  rects.push(q);placed.push(label);
+ }
+ return placed;
+}
 function create({canvas,view,redraw,pin,player,locations,toggleMap}){
  const $=id=>document.getElementById(id),overlay=$('map-overlay'),list=$('map-locations'),search=$('map-search');
  let dragging=null,dragged=false,category='all',previousFocus=null;
@@ -60,5 +71,5 @@ function create({canvas,view,redraw,pin,player,locations,toggleMap}){
  new ResizeObserver(refresh).observe(canvas.parentElement);renderPlaces();
  return Object.freeze({refresh,consumeDrag(){const value=dragged;dragged=false;return value;},open(value){settings.open=false;if(value){previousFocus=document.activeElement;refresh();$('map-close').focus();}else previousFocus?.focus?.();}});
 }
-return Object.freeze({project,unproject,zoomAt,filterPlaces,create});
+return Object.freeze({project,unproject,zoomAt,filterPlaces,placeMapLabels,create});
 });
