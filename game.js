@@ -116,6 +116,7 @@
     function drawTransparent(mesh,transform,vp,alpha=.44){gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);draw(mesh,transform,vp,0,2,alpha);gl.depthMask(true);gl.disable(gl.BLEND);}
     const ident=()=>new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
     function model(x,y,z,yaw=0,sx=1,sy=sx,sz=sx){const c=Math.cos(yaw),s=Math.sin(yaw);return new Float32Array([c*sx,0,-s*sx,0,0,sy,0,0,s*sz,0,c*sz,0,x,y,z,1]);}
+    function rotateY(angle){return model(0,0,0,angle);}
     function rotateX(angle){const c=Math.cos(angle),s=Math.sin(angle);return new Float32Array([1,0,0,0,0,c,s,0,0,-s,c,0,0,0,0,1]);}
     function rotateZ(angle){const c=Math.cos(angle),s=Math.sin(angle);return new Float32Array([c,s,0,0,-s,c,0,0,0,0,1,0,0,0,0,1]);}
     function modelJoint(x,y,z,yaw,pitch){const c=Math.cos(yaw),s=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);return new Float32Array([c,0,-s,0,s*sp,cp,c*sp,0,s*cp,-sp,c*cp,0,x,y,z,1]);}

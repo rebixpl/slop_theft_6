@@ -41,7 +41,8 @@ async function fixture(options){
    // A small previous draw leaves short normal/color streams in non-VAO global state.
    const tiny=mesh([0,0,0,1,0,0,0,0,1],[0,1,0,0,1,0,0,1,0],Array(9).fill(.5));draw(tiny);check('small previous draw');
    const ditherBefore=gl.isEnabled(gl.DITHER),polygonBefore=gl.isEnabled(gl.POLYGON_OFFSET_FILL);
-   renderer.begin([0,24,24],[0,0,0],false,1,[ground],1);check('shadow pass');
+   const blocker=mesh([-4,5,-4,4,5,4,4,5,-4,-4,5,-4,-4,5,4,4,5,4],Array.from({length:6},()=>[0,1,0]).flat(),Array(18).fill(.5),{minX:-4,maxX:4,minY:5,maxY:5,minZ:-4,maxZ:4});
+   renderer.begin([0,24,24],[0,0,0],false,1,options.blocker?[ground,blocker]:[ground],options.scale||1);check('shadow pass');
    const ditherAfter=gl.isEnabled(gl.DITHER),polygonAfter=gl.isEnabled(gl.POLYGON_OFFSET_FILL);
    gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
    renderer.sky([0,24,24],[0,0,0],false,1);check('sky pass');
@@ -56,11 +57,18 @@ async function fixture(options){
  }finally{await page.close();}
 }
 test('a sunlit plane does not shadow itself with striped PCF bands',async()=>{
- const result=await fixture({shadowOnly:true});console.log('plane',JSON.stringify(result));
+ for(const scale of [1,.75]){
+ const result=await fixture({shadowOnly:true,scale});console.log('plane',JSON.stringify(result));
  assert.deepEqual(result.errors,[]);assert.equal(result.stats.shadowEnabled,true);assert.equal(result.darkPixels,0,'every interior pixel must be unoccluded on an otherwise empty plane');
  assert.equal(result.ditherAfter,result.ditherBefore);assert.equal(result.polygonAfter,result.polygonBefore);
+ }
 });
 test('non-VAO path resets short attribute buffers between shadow, sky and main passes',async()=>{
  const result=await fixture({noVAO:true});console.log('noVAO',JSON.stringify(result));
  assert.deepEqual(result.errors,[]);assert.ok(result.max>30,'actual geometry must render');
+});
+
+test('real occluders still cast a visible shadow after acne prevention',async()=>{
+ const result=await fixture({shadowOnly:true,blocker:true});
+ assert.deepEqual(result.errors,[]);assert.ok(result.darkPixels>30,'a raised opaque panel must cast a shadow');assert.equal(result.min,0,'the panel must fully occlude the sun beneath it');
 });

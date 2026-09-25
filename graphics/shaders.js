@@ -37,7 +37,7 @@ attribute vec3 a_position;attribute vec3 a_normal;attribute vec3 a_color;
 uniform mat4 u_vp;uniform mat4 u_model;uniform mat4 u_light_matrix;
 uniform vec3 u_eye;
 varying vec3 v_color;varying vec3 v_normal;varying vec3 v_world;varying vec3 v_local;
-varying vec4 v_shadow;varying float v_distance;
+varying vec4 v_shadow;varying vec3 v_shadow_normal;varying float v_distance;
 void main(){
  vec4 world=u_model*vec4(a_position,1.0);
  mat3 m=mat3(u_model);
@@ -46,6 +46,9 @@ void main(){
  vec3 n=normalize(mat3(c0,c1,c2)*a_normal*(determinant<0.0?-1.0:1.0));
  v_normal=n;v_world=world.xyz;v_local=a_position;v_color=a_color;v_distance=distance(world.xyz,u_eye);
  v_shadow=u_light_matrix*vec4(world.xyz+n*.035,1.0);
+ // Transform the receiver plane, not just its point, into the light's clip space.
+ mat3 lm=mat3(u_light_matrix);
+ v_shadow_normal=normalize(mat3(cross(lm[1],lm[2]),cross(lm[2],lm[0]),cross(lm[0],lm[1]))*n);
  gl_Position=u_vp*world;
 }`;
 const fragment=`
@@ -57,7 +60,7 @@ uniform vec3 u_headlight_left;uniform vec3 u_headlight_right;uniform vec3 u_head
 uniform sampler2D u_ground_texture;uniform sampler2D u_road_texture;uniform sampler2D u_architecture_texture;
 uniform sampler2D u_hardscape_texture;uniform sampler2D u_nature_texture;uniform sampler2D u_vehicle_atlas;uniform sampler2D u_paint_texture;
 uniform sampler2D u_shadow_map;uniform vec2 u_shadow_texel;uniform float u_shadow_enabled;
-varying vec3 v_color;varying vec3 v_normal;varying vec3 v_world;varying vec3 v_local;varying vec4 v_shadow;varying float v_distance;
+varying vec3 v_color;varying vec3 v_normal;varying vec3 v_world;varying vec3 v_local;varying vec4 v_shadow;varying vec3 v_shadow_normal;varying float v_distance;
 ${common}
 vec2 atlasUV(vec2 uv,float tile){return vec2(mod(tile,2.0),1.0-floor(tile*.5))*.5+vec2(.012)+fract(uv)*.476;}
 vec3 detailTint(vec3 tex,float strength){float l=dot(tex,vec3(.2126,.7152,.0722));return mix(vec3(1.0),clamp(vec3(.72)+tex*.60,vec3(.64),vec3(1.22)),strength)*(1.0+(l-.5)*strength*.17);}
@@ -66,10 +69,15 @@ float shadowVisibility(vec3 n){
  vec3 q=v_shadow.xyz/v_shadow.w*.5+.5;
  if(q.z<=0.0||q.z>=1.0||q.x<=0.0||q.x>=1.0||q.y<=0.0||q.y>=1.0)return 1.0;
  float bias=.000055+.00014*(1.0-max(dot(n,normalize(SUN)),0.0)),visibility=0.0;
+ // Each PCF tap lies at a different depth on a sloping receiver. Comparing
+ // every tap against the centre depth creates bands even on a perfectly flat road.
+ vec2 depthSlope=abs(v_shadow_normal.z)>.00001?-v_shadow_normal.xy/v_shadow_normal.z:vec2(0.0);
+ depthSlope=clamp(depthSlope,vec2(-4.0),vec2(4.0));
  for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){
-  vec4 packedDepth=texture2D(u_shadow_map,q.xy+vec2(float(x),float(y))*u_shadow_texel);
+  vec2 tap=(floor(q.xy/u_shadow_texel)+vec2(float(x),float(y))+.5)*u_shadow_texel;
+  vec4 packedDepth=texture2D(u_shadow_map,tap);
   float depth=dot(packedDepth,vec4(1.0/16777216.0,1.0/65536.0,1.0/256.0,1.0))*${depthPacking.decodeScale};
-  visibility+=step(q.z-bias,depth);
+  visibility+=step(q.z+dot(depthSlope,tap-q.xy)-bias,depth);
  }
  float edge=min(min(q.x,1.0-q.x),min(q.y,1.0-q.y));
  return mix(1.0,visibility/9.0,smoothstep(.0,.075,edge));

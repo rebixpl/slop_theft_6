@@ -68,3 +68,13 @@ test('packed shadow depth survives normalized RGBA8 storage without metre-scale 
  assert.ok(shader.shadowFragment.includes(String(packing.encodeScale)),'writer uses tested normalization');
  assert.ok(shader.fragment.includes(String(packing.decodeScale)),'reader uses tested normalization');
 });
+
+test('yaw rotation used by the lighthouse and helicopter matches the existing model transform',()=>{
+ const rotation=source.match(/function rotateY\(angle\)\{[^\n]+\}/)?.[0];
+ assert.ok(rotation,'rotateY must exist before night mode or helicopter support renders');
+ const model=source.match(/function model\(x,y,z,[^\n]+\}/)[0];
+ const context={Math,Float32Array};vm.createContext(context);vm.runInContext(model+'\n'+rotation,context);
+ for(const angle of [0,Math.PI/2,-Math.PI/4,Math.PI,15.7]){
+  assert.deepEqual(Array.from(context.rotateY(angle)),Array.from(context.model(0,0,0,angle)));
+ }
+});
