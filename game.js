@@ -647,17 +647,49 @@ float headlight=0.0;if(u_night>.5&&v_distance<55.0)headlight=beam(u_headlight_le
       colliders.push({x,z,w:25.3,d:20.3,baseY:g-.1,topY:g+9.1,kind:'building'});
     }
     function addPortGellhornMotorCourt(b,x,z,g){
-      const lot=hex(0x4f5351),wall=hex(0xb58970),roof=hex(0x5f554d),metal=hex(0x756b5e),neon=hex(0x75c9c1);
-      b.box(x,g+.075,z,34,.15,34,lot);addBuilding(b,x+4,z-8,22,12,5.6,wall,48);b.box(x+4,g+5.68,z-8,23,.20,13,roof);
-      b.box(x+4,g+3.8,z-1.2,23,.34,2.4,hex(0x8f7965));b.box(x+4,g+3.60,z-.05,21,.10,.16,hex(0xc5ad88));
-      for(let room=0;room<5;room++){const wx=x-5+room*4.5;b.box(wx,g+2.4,z-1.78,2.25,1.55,.12,hex(room%2?0x31515a:0x3e5a60));b.box(wx,g+1.52,z-1.70,1.55,.16,.14,hex(0xc58b69));}
-      for(const side of [-1,1]){const sx=x+side*4.8;b.segment([sx,g+.2,z+8.3],[sx,g+7.25,z+8.3],.12,metal,7);}
-      b.box(x,g+7.15,z+8.3,10.5,2.0,.34,hex(0x4a3841));b.box(x,g+7.35,z+8.51,8.6,.26,.08,hex(0xd3b07d));b.box(x-1.4,g+6.78,z+8.51,5.2,.22,.08,neon);b.sphere(x+3.5,g+7.2,z+8.56,.42,.42,.12,hex(0xff8d93),8,6);
+      const lot=hex(0x454b48),wall=hex(0xb68c72),roof=hex(0x52605d),metal=hex(0x625d54),neon=hex(0xffc878),coral=hex(0xb97468),teal=hex(0x527c78),trim=hex(0xe0c9a5),glass=hex(0x294b55),buildingX=x+4,buildingZ=z-8,buildingW=22,buildingD=12,buildingH=5.6,front=buildingZ+buildingD*.5+.08;
+      b.box(x,g+.075,z,34,.15,34,lot);
+      b.box(buildingX,g+.27,buildingZ,buildingW+.55,.34,buildingD+.55,hex(0x827a6c));
+      b.box(buildingX,g+buildingH*.5,buildingZ,buildingW,buildingH,buildingD,wall);
+      b.box(buildingX,g+buildingH+.12,buildingZ,buildingW+.72,.24,buildingD+.72,roof);
+      b.box(buildingX,g+3.72,buildingZ,buildingW+.18,.12,buildingD+.18,trim);
+      colliders.push(tagLayoutCollider({x:buildingX,z:buildingZ,w:buildingW+.25,d:buildingD+.25,baseY:terrainHeightAt(buildingX,buildingZ)-.1,topY:terrainHeightAt(buildingX,buildingZ)+buildingH+.2,kind:'building'},'building',buildingX,buildingZ,buildingW,buildingD,.65));
+
+      // Five numbered rooms face the shared covered motor court.
+      b.box(buildingX,g+3.44,front+.42,buildingW+.3,.22,.84,teal);
+      b.box(buildingX,g+3.27,front+1.64,buildingW+.55,.18,2.66,hex(0x8e806c));
+      b.box(buildingX,g+3.83,front+1.42,buildingW+.58,.20,2.62,roof);
+      b.box(buildingX,g+3.52,front+2.72,buildingW+.58,.36,.16,coral);
+      for(let room=0;room<5;room++){
+        const roomX=buildingX-8.8+room*4.4,doorX=roomX-.72,windowX=roomX+.76,doorZ=front+.095,windowZ=front+.10;
+        b.box(doorX,g+1.27,doorZ,1.62,2.48,.18,trim);b.box(doorX,g+1.25,doorZ+.12,1.34,2.20,.05,coral);b.box(doorX,g+1.68,doorZ+.155,.84,.92,.035,hex(0x704e43));b.box(doorX,g+1.70,doorZ+.18,.66,.73,.025,glass);b.sphere(doorX+.47,g+1.06,doorZ+.20,.075,.075,.055,neon,8,5);
+        b.box(windowX,g+2.75,windowZ,1.72,1.62,.18,trim);b.box(windowX,g+2.75,windowZ+.11,1.43,1.34,.05,glass);b.box(windowX,g+2.75,windowZ+.145,.045,1.28,.025,hex(0x9db3a4));b.box(windowX,g+1.90,windowZ+.10,1.92,.13,.25,roof);
+        b.box(windowX,g+1.56,front+.30,1.18,.48,.48,hex(0x7a8179));for(let vent=0;vent<4;vent++)b.box(windowX-.37+vent*.25,g+1.56,front+.55,.045,.30,.035,metal);
+        b.box(doorX,g+2.73,front+.23,.92,.45,.16,roof);
+        const number=100+room+1,digits=String(number),digitY=g+2.73,digitZ=front+.33,digitW=.15,digitH=.29,bar=.035,digitGap=.045,digitStartX=doorX-(digitW*3+digitGap*2)*.5+digitW*.5;
+        const segmentsByDigit={0:[0,1,2,3,4,5],1:[1,2],2:[0,1,6,4,3],3:[0,1,6,2,3],4:[5,6,1,2],5:[0,5,6,2,3],6:[0,5,6,4,2,3],7:[0,1,2],8:[0,1,2,3,4,5,6],9:[0,1,2,3,5,6]},digitBars=[[-1,1,1,1],[1,1,1,.5],[1,.5,1,0],[-1,0,1,0],[-1,.5,-1,0],[-1,1,-1,.5],[-1,.5,1,.5]];
+        for(let d=0;d<digits.length;d++)for(const segment of segmentsByDigit[Number(digits[d])]){const [ax,ay,bx,by]=digitBars[segment],cx=digitStartX+d*(digitW+digitGap);b.segment([cx+ax*digitW*.5,digitY+(ay-.5)*digitH,digitZ],[cx+bx*digitW*.5,digitY+(by-.5)*digitH,digitZ],bar,neon,4);}
+        b.box(roomX,g+3.24,front+2.95,1.82,.11,.12,room%2?trim:coral);
+      }
+      for(const postX of [-10,-5,0,5,10])b.segment([buildingX+postX,g+.28,front+2.85],[buildingX+postX,g+3.61,front+2.85],.085,metal,6);
+      b.box(buildingX-10.7,g+5.26,buildingZ,1.1,.45,buildingD+.7,hex(0x8c8776));b.box(buildingX+10.7,g+5.26,buildingZ,1.1,.45,buildingD+.7,hex(0x8c8776));
+      for(let stall=0;stall<=4;stall++){const px=x-14+stall*4;for(const pz of [z+7.3,z+14.4])b.box(px,g+.17,pz,.095,.045,.42,trim);if(stall<4)b.box(px,g+.17,z+10.85,.08,.045,6.95,trim);}
+
+      // A warm, readable roadside sign anchors the motel from Port Gellhorn's grid.
+      const signX=x+4,signZ=z+15.8,signFace=signZ+.24,signY=g+6.70;
+      for(const sx of [-3.65,3.65]){b.segment([signX+sx,g+.26,signZ],[signX+sx,g+7.55,signZ],.12,metal,7);b.box(signX+sx,g+.34,signZ,.72,.20,.62,hex(0x777267));}
+      b.box(signX,signY,signZ,8.2,1.55,.34,coral);b.box(signX,signY,signFace,7.76,1.13,.08,hex(0x342e31));
+      const motelStrokes={M:[[0,0,0,1],[1,0,1,1],[0,1,.5,.52],[.5,.52,1,1]],O:[[0,0,0,1],[1,0,1,1],[0,0,1,0],[0,1,1,1]],T:[[0,1,1,1],[.5,1,.5,0]],E:[[0,0,0,1],[0,1,1,1],[0,.5,.78,.5],[0,0,1,0]],L:[[0,1,0,0],[0,0,1,0]],G:[[1,.78,.55,.78],[1,.78,1,0],[1,0,0,0],[0,0,0,1],[0,1,1,1]],H:[[0,0,0,1],[1,0,1,1],[0,.5,1,.5]],R:[[0,0,0,1],[0,1,1,1],[1,1,1,.55],[1,.55,0,.5],[0,.5,1,0]],N:[[0,0,0,1],[1,0,1,1],[0,1,1,0]]};
+      function motelWord(word,centerY,charW,charH,gap,color){const total=word.length*charW+(word.length-1)*gap,start=signX-total*.5;for(let i=0;i<word.length;i++)for(const [ax,ay,bx,by] of motelStrokes[word[i]])b.segment([start+i*(charW+gap)+ax*charW,centerY+(ay-.5)*charH,signFace+.09],[start+i*(charW+gap)+bx*charW,centerY+(by-.5)*charH,signFace+.09],Math.max(.045,charH*.095),color,5);}
+      motelWord('MOTEL',g+6.91,.72,.57,.16,neon);motelWord('GELLHORN',g+6.39,.38,.20,.08,trim);
+      for(let bulb=0;bulb<9;bulb++)b.sphere(signX-3.1+bulb*.775,g+6.06,signFace+.10,.05,.05,.04,bulb%3?neon:teal,7,5);
+
+      // The small pool and old boardwalk-wheel attraction remain in their established spots.
+      b.box(x+10,g+.20,z+5,7.8,.22,6.8,hex(0xa7977e));b.box(x+10,g+.33,z+5,6.0,.07,5.0,hex(0x416f73));b.box(x+10,g+.375,z+5,5.25,.025,4.2,hex(0x65a1a0));
+      b.segment([x+7.1,g+.42,z+3.0],[x+7.1,g+1.35,z+3.0],.055,metal,5);b.segment([x+7.1,g+1.35,z+3.0],[x+7.1,g+1.35,z+4.0],.055,metal,5);b.segment([x+7.1,g+.42,z+4.0],[x+7.1,g+1.35,z+4.0],.055,metal,5);
       const wheelX=x-9,wheelZ=z+3,wheelY=g+4.8,r=3.75,rideColor=hex(0x875c52);
       for(let i=0;i<16;i++){const a=i*Math.PI*2/16,bAngle=(i+1)*Math.PI*2/16,p=[wheelX+Math.cos(a)*r,wheelY+Math.sin(a)*r,wheelZ],q=[wheelX+Math.cos(bAngle)*r,wheelY+Math.sin(bAngle)*r,wheelZ];b.segment(p,q,.095,rideColor,5);if(i%2===0)b.box(q[0],q[1],q[2],.62,.58,.38,hex(i%4?0x9b8465:0x6b7774));}
       b.segment([wheelX,wheelY,wheelZ],[wheelX-r,wheelY,wheelZ],.07,metal,5);b.segment([wheelX,wheelY,wheelZ],[wheelX+r,wheelY,wheelZ],.07,metal,5);b.segment([wheelX-2.8,g+.25,wheelZ],[wheelX-1.15,wheelY,wheelZ],.16,metal,7);b.segment([wheelX+2.8,g+.25,wheelZ],[wheelX+1.15,wheelY,wheelZ],.16,metal,7);b.cylinder(wheelX,wheelY,wheelZ,.48,.48,.40,metal,9);
-      b.box(x+10,g+.18,z+5,7,.20,6,hex(0x6e716a));b.box(x+10,g+.30,z+5,5,.06,4,hex(0x526361));
-      for(let i=0;i<4;i++)b.segment([x-15+i*2,g+.16,z+13],[x-15+i*2,g+1.0,z+13],.045,metal,5);
     }
     function addGellhornBoardwalk(b,town){
       const startX=town.x-120,dockZ=town.z-84,deckY=terrainHeightAt(startX,dockZ)+.28,wood=hex(0x765f49),weathered=hex(0xa78c70),rust=hex(0x805a45),teal=hex(0x4f7776),coral=hex(0xc77868),cream=hex(0xe0cca6),deckX=startX-20,deckZ=dockZ+15;
@@ -2087,6 +2119,8 @@ function respawnAfterCrash(){crashTimer=0;crashFx.time=0;playerHealth=100;damage
         interact(){toggleRide();return debugState();},selectMission(id){const index=missions.findIndex(m=>m.id===id||m.title===id);if(index<0)throw new RangeError('Unknown mission.');activeMission=index;applyMission();return debugState();},
         state:debugState
       });
+      const debugSpawn=new URLSearchParams(location.search),spawnX=Number(debugSpawn.get('spawnX')),spawnZ=Number(debugSpawn.get('spawnZ')),spawnYaw=Number(debugSpawn.get('spawnYaw')||0);
+      if(debugSpawn.has('spawnX')&&debugSpawn.has('spawnZ')&&[spawnX,spawnZ,spawnYaw].every(Number.isFinite)){window.neonCoastDebug.teleport(spawnX,spawnZ,spawnYaw,debugSpawn.get('inCar')==='1');const focusX=Number(debugSpawn.get('focusX')),focusZ=Number(debugSpawn.get('focusZ'));if(debugSpawn.has('focusX')&&debugSpawn.has('focusZ')&&Number.isFinite(focusX)&&Number.isFinite(focusZ))window.neonCoastDebug.aimAt(focusX,focusZ);}
     }
     updateWeaponHUD();updateWantedHUD(0);syncRenderScaleButton();syncCashDisplay();requestAnimationFrame(frame);
 
