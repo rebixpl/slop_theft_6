@@ -1,16 +1,16 @@
 name: Visual QA
-
 on:
   push:
     branches: [graphics/visual-overhaul]
-    paths: ['game.js', 'index.html', 'graphics/**', 'tests/**', 'package.json']
+    paths: ['game.js', 'index.html', 'asset-loader.js', 'graphics/**', 'tests/**', 'package.json', '.github/workflows/visual-qa.yml']
   pull_request:
-    paths: ['game.js', 'index.html', 'graphics/**', 'tests/**', 'package.json']
+    paths: ['game.js', 'index.html', 'asset-loader.js', 'graphics/**', 'tests/**', 'package.json', '.github/workflows/visual-qa.yml']
   workflow_dispatch:
-
 permissions:
   contents: read
-
+concurrency:
+  group: visual-qa-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   browser:
     runs-on: ubuntu-latest
@@ -22,20 +22,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Check JavaScript
+      - name: Check JavaScript and geometry
         run: |
           node --check game.js
           node --check asset-loader.js
-          if test -f tests/graphics.test.cjs; then node --test tests/graphics.test.cjs; fi
+          npm test
       - name: Install test browser
         run: |
           npm install --no-save --package-lock=false playwright@1.55.1
           npx playwright install --with-deps chromium
+      - name: Verify renderer pixels and state
+        run: node --test tests/renderer.test.cjs 2>&1 | tee /tmp/renderer-tests.txt
       - name: Browser checks
         run: |
           python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/server.log 2>&1 &
           node tests/browser-smoke.cjs
-      - name: Package reproducible source snapshot
+      - name: Package source snapshot
         if: always()
         run: git archive --format=zip HEAD -o /tmp/slop-theft-source.zip
       - uses: actions/upload-artifact@v4
@@ -44,6 +46,7 @@ jobs:
           name: visual-evidence
           path: |
             /tmp/visual-qa
+            /tmp/renderer-tests.txt
             /tmp/server.log
             /tmp/slop-theft-source.zip
           retention-days: 3
