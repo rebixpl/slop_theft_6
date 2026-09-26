@@ -1,0 +1,114 @@
+name: Verify sunshine and model detail
+on:
+  push:
+    branches: [graphics/sunshine-model-detail]
+    paths: ['.sunshine-update/manifest.json']
+permissions:
+  contents: write
+concurrency:
+  group: sunshine-integration
+  cancel-in-progress: false
+jobs:
+  integrate:
+    if: github.repository == 'rebixpl/slop_theft_6' && github.ref == 'refs/heads/graphics/sunshine-model-detail'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Preserve current main runtime comparison
+        run: |
+          mkdir -p /tmp/neon-before
+          git archive HEAD | tar -x -C /tmp/neon-before
+      - name: Apply source edits atomically with before and after checksums
+        shell: python
+        run: |
+          import pathlib, hashlib, json, base64, zlib
+          folder = pathlib.Path('.sunshine-update')
+          manifest = json.loads((folder / 'manifest.json').read_text())
+          encoded = ''.join((folder / ('part-' + str(i) + '.txt')).read_text().strip() for i in range(manifest['parts']))
+          data = zlib.decompress(base64.b64decode(encoded, validate=True))
+          assert hashlib.sha256(data).hexdigest() == manifest['sha256'], 'Payload checksum mismatch'
+          allowed = {'game.js', 'graphics/architecture.js', 'graphics/geometry.js', 'graphics/shaders.js', 'graphics/vehicles.js', 'index.html', 'package.json', 'tests/architecture.test.cjs', 'tests/sunshine.test.cjs', 'tests/atmosphere.test.cjs', 'tests/browser-smoke.cjs', '.github/workflows/visual-qa.yml'}
+          outputs = []
+          for item in json.loads(data):
+              assert item['path'] in allowed, 'Unexpected file'
+              destination = pathlib.Path(item['path'])
+              original = destination.read_bytes() if destination.exists() else None
+              assert (hashlib.sha256(original).hexdigest() if original is not None else None) == item['before'], 'Source changed: ' + item['path']
+              lines = original.decode().splitlines(True) if original is not None else []
+              for begin, end, text in reversed(item['edits']):
+                  assert 0 <= begin <= end <= len(lines)
+                  lines[begin:end] = [text]
+              updated = ''.join(lines).encode()
+              assert hashlib.sha256(updated).hexdigest() == item['after'], 'Result checksum mismatch: ' + item['path']
+              outputs.append((destination, updated))
+          for destination, updated in outputs:
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              destination.write_bytes(updated)
+      - name: Syntax and geometry tests
+        shell: bash
+        run: |
+          node --check game.js
+          for source in graphics/*.js; do node --check "$source"; done
+          npm test 2>&1 | tee /tmp/unit-tests.txt
+      - name: Install test browser
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.1
+          npx playwright install --with-deps chromium
+      - name: Real WebGL sky, shadows and responsive interface
+        shell: bash
+        run: node --test tests/renderer.test.cjs tests/atmosphere.test.cjs tests/interface.test.cjs 2>&1 | tee /tmp/renderer-tests.txt
+      - name: HTTP gameplay and matched daytime comparison
+        shell: bash
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/server-after.log 2>&1 &
+          python3 -m http.server 8766 --bind 127.0.0.1 --directory /tmp/neon-before > /tmp/server-before.log 2>&1 &
+          QA_OUTPUT=/tmp/sunshine-qa/after node tests/browser-smoke.cjs 2>&1 | tee /tmp/game-after.txt
+          QA_URL='http://127.0.0.1:8766/?debug=1' QA_DAY_ONLY=1 QA_OUTPUT=/tmp/sunshine-qa/before node tests/browser-smoke.cjs 2>&1 | tee /tmp/game-before.txt
+          QA_NO_VAO=1 QA_DAY_ONLY=1 QA_OUTPUT=/tmp/sunshine-qa/fallback node tests/browser-smoke.cjs 2>&1 | tee /tmp/game-fallback.txt
+      - name: Commit verified runtime only to isolated branch
+        run: |
+          test "$GITHUB_REF" = 'refs/heads/graphics/sunshine-model-detail'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add game.js graphics index.html package.json tests .github/workflows/visual-qa.yml
+          git rm -r .sunshine-update .github/workflows/sunshine-integration.yml
+          git commit -m 'Model sculpted cars and curved facades; restore clear sunlit coastal lighting'
+          git push origin HEAD:refs/heads/graphics/sunshine-model-detail
+          git rev-parse HEAD > /tmp/tested-commit.txt
+      - name: Preserve actual source including any failed uncommitted edits
+        if: always()
+        shell: bash
+        run: |
+          git diff > /tmp/working-changes.patch
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          with ZipFile('/tmp/sunshine-source.zip','w',ZIP_DEFLATED) as z:
+              for root in ['graphics','ui','tests']:
+                  for p in Path(root).rglob('*'):
+                      if p.is_file(): z.write(p)
+              for name in ['game.js','asset-loader.js','index.html','styles.css','package.json']:
+                  z.write(name)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sunshine-model-evidence
+          path: |
+            /tmp/sunshine-qa
+            /tmp/unit-tests.txt
+            /tmp/renderer-tests.txt
+            /tmp/game-after.txt
+            /tmp/game-before.txt
+            /tmp/game-fallback.txt
+            /tmp/server-after.log
+            /tmp/server-before.log
+            /tmp/tested-commit.txt
+            /tmp/working-changes.patch
+            /tmp/sunshine-source.zip
+          retention-days: 7
+          if-no-files-found: error
