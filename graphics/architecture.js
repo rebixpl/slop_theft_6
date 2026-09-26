@@ -18,11 +18,36 @@ function lettering(b,text,x,y,z,width,height,col){
   }
  }
 }
+// Extruded semicircular molding with smooth inner/outer radial normals.
+function arch(b,x,y,z,r,thickness,depth,col,segments=16){
+ const point=(radius,angle,back)=>[x+Math.cos(angle)*radius,y+Math.sin(angle)*radius,z+(back?-depth:0)];
+ for(let i=0;i<segments;i++){
+  const a=i*Math.PI/segments,d=(i+1)*Math.PI/segments;
+  const radial=t=>[Math.cos(t),Math.sin(t),0];
+  b.quad(point(r,a,false),point(r+thickness,a,false),point(r+thickness,d,false),point(r,d,false),col,[0,0,1]);
+  const A=point(r,a,false),D=point(r,d,false),Ab=point(r,a,true),Db=point(r,d,true);
+  const na=radial(a).map(v=>-v),nd=radial(d).map(v=>-v);
+  b.tri(A,D,Db,col,[na,nd,nd]);b.tri(A,Db,Ab,col,[na,nd,na]);
+  const O=point(r+thickness,a,false),P=point(r+thickness,d,false),Ob=point(r+thickness,a,true),Pb=point(r+thickness,d,true);
+  b.tri(O,Ob,Pb,col,[radial(a),radial(a),radial(d)]);b.tri(O,Pb,P,col,[radial(a),radial(d),radial(d)]);
+ }
+}
+function curvedSlab(b,x,y,z,halfWidth,depth,height,col){
+ const N=16;
+ for(let i=0;i<N;i++){
+  const a=Math.PI*i/N,d=Math.PI*(i+1)/N;
+  const point=(t,h)=>[x+Math.cos(t)*halfWidth,y+h,z+Math.sin(t)*depth];
+  const A=point(a,0),D=point(d,0),At=point(a,height),Dt=point(d,height);
+  b.tri([x,y+height,z],Dt,At,col,[0,1,0]);b.tri([x,y,z],A,D,col,[0,-1,0]);
+  const normal=t=>{const v=[Math.cos(t)/halfWidth,0,Math.sin(t)/depth],L=Math.hypot(...v);return v.map(n=>n/L);};
+  b.tri(A,At,Dt,col,[normal(a),normal(a),normal(d)]);b.tri(A,Dt,D,col,[normal(a),normal(d),normal(d)]);
+ }
+}
 function building(b,x,z,w,d,h,color,variant=0,options={}){
  if(![x,z,w,d,h,variant].every(Number.isFinite)||Math.min(w,d)<2||h<2)throw new RangeError('Finite building dimensions >= 2 meters required.');
  const base=options.baseY||0,style=options.style??((Math.floor(variant)%4+4)%4),shop=options.shop!==false&&!options.highrise;
- const cream=rgb(0xe5dfcf,3),metal=rgb(0x35494c,9),glass=rgb(0x36575e,7),warmGlass=rgb(0x937b58,8),dark=rgb(0x30383a,9);
- const paint=color.slice(0,3).map((v,i)=>v*.62+[.86,.83,.76][i]*.38);
+ const cream=rgb(0xd6cebd,3),metal=rgb(0x35494c,9),glass=rgb(0x36575e,7),warmGlass=rgb(0x937b58,8),dark=rgb(0x30383a,9);
+ const paint=color.slice(0,3).map((v,i)=>v*.86+[.78,.75,.68][i]*.14);
  const wall=style===1?rgb(0x92756a,5):style===3?material(paint,6):material(paint,style===0?1:2);
  const accent=rgb([0xdb8993,0x354b4f,0x6c9c97,0x929983][style],10),floors=Math.max(1,Math.floor(h/3.4)),fh=(h-.48)/floors;
  // Recessed core is a room back, not a wall covering the openings.
@@ -46,17 +71,31 @@ function building(b,x,z,w,d,h,color,variant=0,options={}){
     if(c===0)box(-span/2+(bay-pw)/4,cy,-.18,(bay-pw)/2,ph,.36,wall);
     box(u+pw/2+(c===cols-1?(bay-pw)/4:(bay-pw)/2),cy,-.18,c===cols-1?(bay-pw)/2:bay-pw,ph,.36,wall);
     pane(u,cy,-.24,pw,ph,g);
-    for(const s of [-1,1])pane(u+s*(pw/2-.05),cy,-.015,.085,ph+.02,style===1?metal:cream);
-    pane(u,top-.04,-.015,pw,.085,cream);box(u,bottom-.035,.02,pw+.15,.11,.27,cream);
+    for(const s of [-1,1])pane(u+s*(pw/2-.025),cy,-.10,.047,ph+.02,metal);
+    pane(u,top-.025,-.10,pw,.047,metal);box(u,bottom-.035,.02,pw+.15,.11,.27,cream);
     if(pw>1.3)pane(u,cy,-.145,.045,ph,metal);
     if(retail){pane(u,cy-ph*.15,-.135,pw,.055,metal);if(axis==='z'&&sign===1&&c===Math.floor(cols/2))box(u+pw*.18,cy-.2,-.07,.035,.40,.06,cream);}
     else if(style===3&&h<10){for(const s of [-1,1]){box(u+s*(pw/2+.18),cy,.025,.22,ph+.12,.10,accent);for(let slat=0;slat<5;slat++)pane(u+s*(pw/2+.18),cy-ph*.36+slat*ph*.18,.105,.20,.035,cream);}}
+    if(retail&&style===0&&axis==='z'&&sign===1){
+     const radius=Math.min(pw*.48,.90),spring=top-radius-.04;
+     arch(b,x+u,base+spring,z+half+.045,radius,.115,.30,cream);
+     for(const s of [-1,1])b.cylinder(x+u+s*(radius+.055),base+(bottom+spring)/2,z+half-.018,.06,.08,Math.max(.08,spring-bottom),cream,10);
+     // The dark upper corners are behind the new arch, not separate floating panels.
+     for(const s of [-1,1])box(u+s*pw*.45,top-.16,-.07,pw*.10,.32,.18,wall);
+    }
     // Usable-looking shallow balconies, constrained to the original reserved footprint.
-    if(axis==='z'&&sign===1&&f>0&&style===2&&!options.highrise&&c%2===0){
+    if(axis==='z'&&sign===1&&f%2===1&&style===2&&!options.highrise&&c%3===0){
      const by=bottom-.15,bw=Math.min(bay-.2,pw+.40);
-     box(u,by,.23,bw,.14,.62,cream);box(u,by+.8,.52,bw,.045,.05,metal);
-     for(const s of [-1,0,1])box(u+s*bw*.43,by+.43,.52,.045,.72,.05,metal);
-     box(u,by+.37,.50,bw,.06,.055,cream);
+     curvedSlab(b,x+u,base+by,z+half-.04,bw/2,.62,.13,cream);
+     // Continuous open handrail tube: no wasteful caps at every curved segment.
+     const center=t=>[x+u+Math.cos(t)*bw*.46,base+by+.86,z+half-.02+Math.sin(t)*.56];
+     const railPoint=(t,p)=>{const v=center(t);return[v[0]+Math.cos(t)*Math.sin(p)*.017,v[1]+Math.cos(p)*.017,v[2]+Math.sin(t)*Math.sin(p)*.017];};
+     for(let j=0;j<12;j++)for(let k=0;k<5;k++){
+      const a=Math.PI*j/12,t=Math.PI*(j+1)/12,p=k*Math.PI*2/5,q=(k+1)*Math.PI*2/5;
+      b.quad(railPoint(a,p),railPoint(a,q),railPoint(t,q),railPoint(t,p),metal);
+     }
+     for(const t of [0,Math.PI/2,Math.PI]){const v=center(t);b.segment([v[0],base+by+.16,v[2]],v,.016,metal,5);}
+
     }
    }
   }
@@ -77,6 +116,19 @@ function building(b,x,z,w,d,h,color,variant=0,options={}){
   b.box(x,sy,front+.11,signW,.68,.20,accent);
   lettering(b,['HOTEL','MARKET','CAFE','RECORDS'][style],x,sy,front+.216,signW*.82,.35,rgb(0xffedcb,11));
   b.box(x,sy-.47,front+.26,Math.min(w-.6,signW+.65),.11,.63,cream);
+  if(style===0){
+   curvedSlab(b,x,sy-.5,front-.035,Math.min(w*.43,signW*.58),.63,.13,cream);
+   for(const side of [-1,1]){
+    b.cylinder(x+side*signW*.46,base+(sy-base-.5)/2,front+.37,.085,.12,sy-base-.5,cream,12);
+    b.cylinder(x+side*signW*.46,base+.12,front+.37,.16,.17,.24,cream,12);
+   }
+  }
+  // Drainpipes, utility panels and glazing crossbars have actual depth at sidewalk scale.
+  for(const side of [-1,1]){
+   b.cylinder(x+side*(w/2-.44),base+h*.48,front+.055,.034,.034,h*.94,metal,8);
+   b.box(x+side*(w/2-.67),base+1.36,front+.065,.31,.43,.11,metal);
+   for(let slot=0;slot<4;slot++)b.box(x+side*(w/2-.67),base+1.24+slot*.075,front+.125,.24,.022,.008,cream);
+  }
   // Canvas valance and restrained downlights, not texture-free sign blocks.
   b.box(x,sy-.58,front+.54,Math.min(w-.6,signW+.65),.19,.075,accent);
   for(const s of [-1,1])b.box(x+s*signW*.40,sy-.36,front+.27,.16,.045,.18,rgb(0xffe5b4,11));
@@ -98,5 +150,5 @@ function cottage(b,x,z,w,d,h,color,roofColor,ground=0,stilts=false){
 function assetSurface(name=''){
  if(/Glass/i.test(name))return 7;if(/Stucco.*Coral/i.test(name))return 2;if(/Stucco/i.test(name))return 1;if(/Terrazzo|Roof/i.test(name))return 3;if(/Timber/i.test(name))return 6;if(/Canvas|Enamel/i.test(name))return 10;return 0;
 }
-return Object.freeze({building,cottage,assetSurface,material});
+return Object.freeze({building,cottage,assetSurface,material,arch});
 });

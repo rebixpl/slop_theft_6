@@ -7,7 +7,7 @@
   'use strict';
   const TAU = Math.PI * 2;
   const hex = h => [(h >> 16 & 255) / 255, (h >> 8 & 255) / 255, (h & 255) / 255];
-  const tint = (c, f) => c.map(v => Math.min(1, Math.max(0, v * f)));
+  const tint = (c, f) => c.map((v,i) => i<3?Math.min(1, Math.max(0, v * f)):v);
   const add = (a, b) => a.map((v, i) => v + b[i]);
   const sub = (a, b) => a.map((v, i) => v - b[i]);
   const mul = (a, s) => a.map(v => v * s);
@@ -111,20 +111,50 @@
       const s=[sx,sy,sz];face([0,1,2].map(a=>H.map((h,i)=>s[i]*(h-(i===a?0:r)))),unit(s));
     }
   }
+  // Smooth radius, not a single flat bevel. Faces meet with shared analytic normals.
+  function roundedBox(b,x,y,z,w,h,d,col,radius=.03,segments=3) {
+    const half=[w/2,h/2,d/2],center=[x,y,z];
+    if(!half.every(v=>Number.isFinite(v)&&v>0))throw new RangeError('Positive finite box dimensions required');
+    const r=Math.max(0,Math.min(radius,...half.map(v=>v*.95))),steps=Math.max(1,Math.floor(segments));
+    if(r<1e-6){b.box(x,y,z,w,h,d,col);return b;}
+    const knots=H=>{const a=[];for(let i=0;i<=steps;i++)a.push(-H+r*i/steps);for(let i=0;i<=steps;i++)a.push(H-r+r*i/steps);return a;};
+    for(let axis=0;axis<3;axis++)for(const sign of [-1,1]){
+      const u=(axis+1)%3,v=(axis+2)%3,U=knots(half[u]),V=knots(half[v]);
+      const vertex=(a,c)=>{const q=[0,0,0];q[axis]=sign*half[axis];q[u]=a;q[v]=c;
+        const inner=q.map((t,i)=>Math.max(-half[i]+r,Math.min(half[i]-r,t))),normal=unit(sub(q,inner));
+        return{p:add(add(inner,mul(normal,r)),center),n:normal};};
+      for(let i=0;i<U.length-1;i++)for(let j=0;j<V.length-1;j++){
+        const q=[vertex(U[i],V[j]),vertex(U[i+1],V[j]),vertex(U[i+1],V[j+1]),vertex(U[i],V[j+1])];
+        if(sign<0)q.reverse();b.tri(q[0].p,q[1].p,q[2].p,col,q.slice(0,3).map(t=>t.n));b.tri(q[0].p,q[2].p,q[3].p,col,[q[0].n,q[2].n,q[3].n]);
+      }
+    }return b;
+  }
+  // Shape-preserving interpolation adds real silhouette resolution to anatomical lofts.
+  function interpolateRings(rings,subdivisions=2){
+    const out=[];
+    for(let i=0;i<rings.length-1;i++)for(let j=0;j<subdivisions;j++){
+      const t=j/subdivisions,a=rings[i],b=rings[i+1],p=rings[Math.max(0,i-1)],q=rings[Math.min(rings.length-1,i+2)];
+      out.push(Array.from({length:5},(_,k)=>{
+        const A=a[k]||0,B=b[k]||0;if(k===0)return A+(B-A)*t;
+        const m0=(B-(p[k]||0))*.35,m1=((q[k]||0)-A)*.35;
+        return Math.max(Math.min(A,B),Math.min(Math.max(A,B),(2*t*t*t-3*t*t+1)*A+(t*t*t-2*t*t+t)*m0+(-2*t*t*t+3*t*t)*B+(t*t*t-t*t)*m1));
+      }));
+    }out.push(rings[rings.length-1]);return out;
+  }
   function bevelBuilder(b,r=.02) {
     const old=b.box.bind(b);b.box=function(x,y,z,w,h,d,c){if(Math.min(w,h,d)<r*2)return old(x,y,z,w,h,d,c);bevelBox({tri:b.tri.bind(b),box:old},x,y,z,w,h,d,c,r);};return b;
   }
 
   function personBody(B,jacketColor=0x327d78,pantsColor=0x293f52,skinColor=0xc68b69,hairColor=0x302726) {
-    const b=new B(),coat=hex(jacketColor),skin=hex(skinColor),hair=hex(hairColor),dark=tint(coat,.72);
+    const b=new B(),coat=[...hex(jacketColor),13],skin=[...hex(skinColor),12],hair=hex(hairColor),dark=tint(coat,.72);
     loft(b,[[.94,.20,.14],[1.03,.24,.16],[1.19,.235,.145],[1.42,.285,.18],[1.57,.32,.17],[1.67,.275,.135],[1.72,.13,.095]],coat,20);
     loft(b,[[.89,.20,.14],[.97,.232,.158],[1.015,.238,.16]],hex(pantsColor),16);
     loft(b,[[.985,.239,.164],[1.025,.239,.164]],hex(0x302a28),16);
     bevelBox(b,0,1.008,-.169,.072,.04,.018,hex(0xafa18b),.006);
     b.segment([0,1.65,0],[0,1.85,0],.087,skin,12,.085);
     // Anatomical jaw / cheek / brow / skull silhouette rather than a spherical head.
-    loft(b,[[1.80,.064,.070,-.021],[1.835,.102,.093,-.006],[1.91,.143,.124],[2.015,.149,.137,.008],[2.09,.137,.123,.014],[2.14,.102,.093,.018],[2.16,.04,.04,.019]],skin,24);
-    loft(b,[[2.066,.143,.129,.018],[2.12,.136,.12,.025],[2.17,.094,.085,.023],[2.185,.022,.022,.023]],hair,20);
+    loft(b,interpolateRings([[1.80,.064,.070,-.021],[1.835,.102,.093,-.006],[1.91,.143,.124],[2.015,.149,.137,.008],[2.09,.137,.123,.014],[2.14,.102,.093,.018],[2.16,.04,.04,.019]],3),skin,32);
+    loft(b,[[2.066,.143,.129,.018],[2.12,.136,.12,.025],[2.17,.094,.085,.023],[2.185,.022,.022,.023]],hair,32);
     for(const side of [-1,1]) {
       b.sphere(side*.146,1.987,.008,.024,.043,.022,skin,8,6);
       b.sphere(side*.052,2.022,-.124,.020,.009,.009,hex(0xdfd9cd),8,5);
@@ -140,7 +170,7 @@
     return b;
   }
   function personArm(B,jacketColor=0x327d78,skinColor=0xc68b69) {
-    const b=new B(),coat=hex(jacketColor),skin=hex(skinColor);
+    const b=new B(),coat=[...hex(jacketColor),13],skin=[...hex(skinColor),12];
     b.sphere(0,-.045,0,.11,.13,.115,coat,12,8);
     loft(b,[[-.34,.077,.077,-.027],[-.27,.091,.09,-.018],[-.10,.106,.105,0],[.015,.083,.088,0]],coat,14);
     loft(b,[[-.37,.079,.078,-.032],[-.33,.081,.08,-.027]],tint(coat,.68),14);
@@ -244,5 +274,5 @@
       b.box(x,h+.27,z+side*(d*.5-.12),w,.48,.24,r);
     }
   }
-  return {install,smoothNormals,loft,bevelBox,bevelBuilder,personBody,personArm,personLeg,wheel,palm,pine,roofDetail};
+  return {install,smoothNormals,loft,bevelBox,roundedBox,interpolateRings,bevelBuilder,personBody,personArm,personLeg,wheel,palm,pine,roofDetail};
 });

@@ -12,7 +12,7 @@ test('four facade styles have finite geometry, material tags and bounded footpri
   const b=ready();A.building(b,20,30,24,20,22,[.8,.6,.5],variant);
   assert.ok(b.p.length>1000);assert.ok(b.p.every(Number.isFinite));assert.equal(b.p.length,b.n.length);assert.equal(b.p.length,b.c.length);
   const q=bounds(b);assert.ok(q[0]>=20-12-.55&&q[3]<=20+12+.55,'preserve X reservation');assert.ok(q[2]>=30-10-.55&&q[5]<=30+10+.65,'preserve Z reservation');assert.ok(q[1]>=-.11&&q[4]<=24.2,'roof height remains bounded');
-  const tags=new Set(b.s);assert.ok(tags.has(7)||tags.has(8),'explicit window surface');assert.ok(tags.has(3),'stone/coping surface');assert.ok(b.p.length/9<6500,'per-building triangle budget');
+  const tags=new Set(b.s);assert.ok(tags.has(7)||tags.has(8),'explicit window surface');assert.ok(tags.has(3),'stone/coping surface');assert.ok(b.p.length/9<7500,'curved-facade triangle budget (7.5k)' );
  }
 });
 test('window panes sit behind front piers instead of floating on a solid facade',()=>{
