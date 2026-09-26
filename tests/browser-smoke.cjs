@@ -53,6 +53,8 @@ const assert = require('node:assert/strict');
     await page.evaluate(() => {neonCoastDebug.teleport(0,-175,0,true);neonCoastDebug.aim(2.4,.16);});await step(2);
     checks.car = await page.evaluate(() => neonCoastDebug.state());assert.equal(checks.car.driving,true);
     await shot('car');
+    await page.evaluate(()=>neonCoastDebug.aim(Math.PI-.65,.24));await shot('car-front');
+    await page.evaluate(()=>neonCoastDebug.aim(2.4,.16));
     await page.keyboard.down('w');await step(8);await page.keyboard.up('w');
     checks.drove = await page.evaluate(() => neonCoastDebug.state());
     checks.driving = Math.hypot(checks.drove.x-checks.car.x,checks.drove.z-checks.car.z)>.001;
@@ -62,6 +64,7 @@ const assert = require('node:assert/strict');
     await shot('hotel');
     await page.evaluate(() => {neonCoastDebug.teleport(3.1,14,0,false);neonCoastDebug.aim(Math.PI,.12);});
     await shot('character');
+    await page.evaluate(()=>{neonCoastDebug.teleport(2,31,0,false);neonCoastDebug.aimAt(32,24,.18);});await shot('architecture-day');
     if(process.env.QA_DAY_ONLY==='1'){
       assert.ok(checks.walking&&checks.driving&&checks.map,'daytime interactions');assert.deepEqual(errors,[]);
       checks.dayOnly=true;checks.passed=true;return;

@@ -3,6 +3,7 @@
 'use strict';
 // Byte textures store n/255, while radix-256 packing produces n/256.
 const depthPacking=Object.freeze({encodeScale:256/255,decodeScale:255/256});
+const atmosphere=Object.freeze({nearClear:80,dayDensity:0.00018,nightDensity:0.00032,farStart:1260,farEnd:1470});
 const common = `
 const vec3 SUN = vec3(-0.6000,0.6600,0.4500);
 vec3 displayColor(vec3 x){
@@ -14,14 +15,14 @@ float hash21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float valueNoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash21(i),hash21(i+vec2(1,0)),f.x),mix(hash21(i+vec2(0,1)),hash21(i+vec2(1,1)),f.x),f.y);}
 vec3 skyRadiance(vec3 ray,float night,float time){
   float h=max(ray.y,0.0),sunDot=max(dot(ray,normalize(SUN)),0.0);
-  vec3 day=mix(vec3(.73,.83,.90),vec3(.085,.27,.53),pow(h,.40));
-  day+=vec3(.65,.31,.11)*pow(sunDot,9.0)*(1.0-h)*.22;
+  vec3 day=mix(vec3(.26,.46,.68),vec3(.022,.095,.29),pow(h,.46));
+  day+=vec3(.78,.27,.075)*pow(sunDot,14.0)*(1.0-h)*.18;
   day+=vec3(5.0,3.9,2.5)*smoothstep(.99955,.99988,sunDot);
   if(ray.y>.045){
     vec2 uv=ray.xz/(ray.y+.18)*1.7+vec2(time*.003,0.0);
     float n=valueNoise(uv)*.56+valueNoise(uv*2.1)*.28+valueNoise(uv*4.3)*.16;
-    float cloud=smoothstep(.58,.79,n)*smoothstep(.045,.15,ray.y)*(1.0-smoothstep(.64,.98,ray.y));
-    day=mix(day,vec3(.85,.83,.80),cloud*.64);
+    float cloud=smoothstep(.69,.87,n)*smoothstep(.045,.15,ray.y)*(1.0-smoothstep(.64,.98,ray.y));
+    day=mix(day,vec3(.90,.87,.80),cloud*.80);
   }
   vec3 dark=mix(vec3(.015,.029,.055),vec3(.002,.008,.023),pow(h,.42));
   dark+=vec3(.5,.65,.9)*smoothstep(.99965,.9999,sunDot)*.34;
@@ -117,7 +118,7 @@ void main(){
   float sand=up*low*step(.60,v_color.r)*step(.06,v_color.r-v_color.b)*(1.0-asphalt);
   if(sand>.5)albedo*=detailTint(texture2D(u_nature_texture,atlasUV(v_world.xz*.1,3.0)).rgb,.30);
  }else if(u_material<1.5){
-  roughness=.28;metallic=.24;coat=1.0;
+  roughness=.22;metallic=.30;coat=1.0;
   vec2 uv=abs(n.y)>.6?v_local.xz:abs(n.x)>abs(n.z)?v_local.zy:v_local.xy;
   float paint=dot(texture2D(u_paint_texture,uv*1.5).rgb,vec3(.333));
   albedo*=.97+.06*paint;
@@ -166,19 +167,23 @@ void main(){
     albedo*=1.0-seam*.32;roughness=.72;
    }
   }else if(kind<8.5){
-   roughness=.13;metallic=.12;coat=.90;
+   roughness=.105;metallic=.025;coat=.72;
    float blinds=smoothstep(.06,.13,fract(v_world.y*5.0));
-   albedo*=mix(.55,.82,blinds);
+   float roomTone=.28+.28*hash21(floor(uv*vec2(.24,.30)));
+   // Dark interior behind glazing; reflected blue sky is added separately below.
+   albedo*=roomTone*(.88+.12*blinds);
    if(kind>7.5)emissive+=vec3(.50,.27,.105)*u_night*(.65+.35*blinds);
   }else if(kind<9.5){roughness=.34;metallic=.62;}
   else if(kind<10.5){roughness=.91;albedo*=.93+.07*valueNoise(uv*10.0);}
-  else{roughness=.42;emissive+=albedo*(.15+1.8*u_night);}
+  else if(kind<11.5){roughness=.42;emissive+=albedo*(.15+1.8*u_night);}
+  else if(kind<12.5){roughness=.61;albedo*=.98+.02*valueNoise(v_local.xy*160.0);}
+  else{roughness=.92;albedo*=.95+.05*valueNoise(v_local.xy*220.0);}
  }
  if(u_material>5.5&&u_material<6.5){
   water=1.0;
   float a=v_world.x*.16+v_world.z*.11+u_time*.70,b=v_world.z*.34-v_world.x*.21+u_time*1.1;
   n=normalize(vec3(-.045*cos(a)-.023*cos(b),1.0,-.032*cos(a)+.034*cos(b)));
-  albedo=vec3(.012,.070,.086);roughness=.14;metallic=.05;coat=1.0;
+  albedo=vec3(.006,.11,.115);roughness=.14;metallic=.05;coat=1.0;
  }
  float noV=max(dot(n,view),.001),noL=max(dot(n,sun),0.0);
  vec3 halfVector=normalize(view+sun);float noH=max(dot(n,halfVector),0.0),voH=max(dot(view,halfVector),0.0);
@@ -189,12 +194,12 @@ void main(){
  float geometry=(noV/(noV*(1.0-k)+k))*(noL/(noL*(1.0-k)+k));
  vec3 specular=distribution*geometry*fresnel/max(4.0*noV*noL,.001);
  float visibility=shadowVisibility(n);
- vec3 sunColor=mix(vec3(2.85,2.45,1.93),vec3(.035,.055,.095),u_night);
+ vec3 sunColor=mix(vec3(3.65,2.98,2.12),vec3(.035,.055,.095),u_night);
  vec3 direct=((1.0-fresnel)*(1.0-metallic)*albedo/3.14159265+specular)*sunColor*noL*visibility;
  float skyWeight=clamp(n.y*.5+.5,0.0,1.0);
- vec3 ambient=mix(vec3(.17,.145,.12),vec3(.39,.50,.62),skyWeight);
+ vec3 ambient=mix(vec3(.075,.058,.043),vec3(.17,.24,.33),skyWeight);
  ambient*=mix(1.0,.09,u_night);
- float localAO=mix(.78,1.0,smoothstep(-.05,.75,n.y));
+ float localAO=mix(.70,1.0,smoothstep(-.05,.75,n.y));
  vec3 color=direct+albedo*(1.0-metallic*.65)*ambient*localAO;
  vec3 reflection=reflect(-view,n);
  vec3 reflected=skyRadiance(reflection,u_night,u_time);
@@ -207,8 +212,8 @@ void main(){
  if(water>.5){float fres=.025+.975*pow(1.0-noV,5.0);color=mix(color,reflected*.88,fres);}
  if(u_night>.5&&v_distance<60.0)color+=albedo*(headlight(u_headlight_left,n)+headlight(u_headlight_right,n))*vec3(2.7,2.05,1.3);
  color+=albedo*u_emission*2.6+emissive;
- vec3 ray=normalize(v_world-u_eye);float haze=1.0-exp(-v_distance*mix(.00072,.00048,u_night));
- haze=max(haze,smoothstep(1080.0,1470.0,v_distance));
+ vec3 ray=normalize(v_world-u_eye);float haze=1.0-exp(-max(v_distance-${atmosphere.nearClear}.0,0.0)*mix(${atmosphere.dayDensity},${atmosphere.nightDensity},u_night));
+ haze=max(haze,smoothstep(${atmosphere.farStart}.0,${atmosphere.farEnd}.0,v_distance));
  vec3 fog=skyRadiance(vec3(ray.x,max(ray.y,.018),ray.z),u_night,u_time);
  gl_FragColor=vec4(displayColor(mix(color,fog,haze)),u_alpha);
 }`;
@@ -217,7 +222,7 @@ const skyFragment=`precision highp float;varying vec2 v_uv;uniform vec3 u_forwar
 void main(){vec3 ray=normalize(u_forward+u_right*v_uv.x*u_aspect*.554309+u_up*v_uv.y*.554309);gl_FragColor=vec4(displayColor(skyRadiance(ray,u_night,u_time)),1.0);}`;
 const shadowVertex=`attribute vec3 a_position;uniform mat4 u_model;uniform mat4 u_light_matrix;void main(){gl_Position=u_light_matrix*u_model*vec4(a_position,1.0);}`;
 const shadowFragment=`precision highp float;void main(){vec4 d=fract(min(gl_FragCoord.z,.999999)*vec4(16777216.0,65536.0,256.0,1.0));d-=d.xxyz*vec4(0.0,1.0/256.0,1.0/256.0,1.0/256.0);gl_FragColor=d*${depthPacking.encodeScale};}`;
-const api={depthPacking,vertex,fragment,skyVertex,skyFragment,shadowVertex,shadowFragment};
+const api={atmosphere,depthPacking,vertex,fragment,skyVertex,skyFragment,shadowVertex,shadowFragment};
 root.NeonCoastShaders=api;
 if(typeof module==='object'&&module.exports)module.exports=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

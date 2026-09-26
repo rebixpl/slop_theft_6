@@ -1,7 +1,7 @@
 name: Visual QA
 on:
   push:
-    branches: [graphics/visual-overhaul]
+    branches: [graphics/visual-overhaul, graphics/sunshine-model-detail]
     paths: ['game.js', 'index.html', 'styles.css', 'asset-loader.js', 'graphics/**', 'ui/**', 'tests/**', 'package.json', '.github/workflows/visual-qa.yml']
   pull_request:
     paths: ['game.js', 'index.html', 'styles.css', 'asset-loader.js', 'graphics/**', 'ui/**', 'tests/**', 'package.json', '.github/workflows/visual-qa.yml']
@@ -35,7 +35,7 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Verify renderer pixels and responsive UI
         shell: bash
-        run: node --test tests/renderer.test.cjs tests/interface.test.cjs 2>&1 | tee /tmp/renderer-tests.txt
+        run: node --test tests/renderer.test.cjs tests/interface.test.cjs tests/atmosphere.test.cjs 2>&1 | tee /tmp/renderer-tests.txt
       - name: HTTP game and atlas checks
         run: |
           python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/server.log 2>&1 &
